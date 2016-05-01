@@ -68,8 +68,7 @@
 
 #############################################################################################
 #
-# Todo:      Write out logfile
-#            Add pushover support and messages
+# Todo:      Add pushover support and messages
 #            Add email support and messages
 #            Mount and unmount parity
 #            Go over code and clean
@@ -101,10 +100,10 @@ my $options = q{
   ## Sync and Scrub options
   deletedFiles=50                                               #Max amount of deleted files to auto sync
   changedFiles=500                                              #Max amount of changed files to auto sync
-  scrubDays=7                                                   #Number of days before scrub is run 
+  scrubDays=3                                                   #Number of days before scrub is run 
   scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
   scrubAge=10                                                   #Data older than days
-  scrubPercentage=3                                             #Percentage of array to scrub
+  scrubPercentage=8                                             #Percentage of array to scrub
   useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in latest versions of snapraid).
   
   ## Smart options
@@ -122,8 +121,8 @@ my $options = q{
 
   ## Other Options
   spinDown=0                                                    #Spindown array once script completed?
-  pool=0                                                        #Run pool command if valid config option found?
-  logFile=/tmp/snapRAID.log                                     #Logfile location
+  pool=1                                                        #Run pool command if valid config option found?
+  logFile=/tmp/script-snapRAID.log                              #Logfile location
   logLevel=3                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
   logStdout=0                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
 
