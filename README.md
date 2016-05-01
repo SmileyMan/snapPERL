@@ -66,10 +66,12 @@ distributing this SOFTWARE PRODUCT.
 
 
 
- Todo:      Write out logfile
-            Add pushover support and messages
-            Add email support and messages
-            mount and unmount parity
-            Go over code and clean
-            Drink beer!
+#Todo
+
+           Write out logfile
+           Add pushover support and messages
+           Add email support and messages
+           mount and unmount parity
+           Go over code and clean
+           Drink beer!
 
