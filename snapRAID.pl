@@ -43,7 +43,7 @@
 #############################################################################################
 
 #############################################################################################
-# Created by Steve Miles (SmileyMan).
+# Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
 #
 # Based on a bash script by Zack Read (http://zackread.me) - Extended and converted to PERL
 #
@@ -71,7 +71,7 @@
 # Todo:      Write out logfile
 #            Add pushover support and messages
 #            Add email support and messages
-#            mount and unmount parity
+#            Mount and unmount parity
 #            Go over code and clean
 #            Drink beer!
 #
