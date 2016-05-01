@@ -43,7 +43,9 @@ Helper script for snapraid created in PERL
 
 
 
-#Created by Steve Miles (SmileyMan).
+#Created by Steve Miles (SmileyMan). 
+
+https://github.com/SmileyMan
 
 Based on a bash script by Zack Read (http://zackread.me) - Extended and converted to PERL
 
