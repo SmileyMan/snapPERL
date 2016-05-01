@@ -71,7 +71,6 @@ distributing this SOFTWARE PRODUCT.
 
 #Todo
 
-           Write out logfile
            Add pushover support and messages
            Add email support and messages
            Mount and unmount parity
