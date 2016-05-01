@@ -173,7 +173,7 @@ if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
     logit('Sync was not run. Scrub only performed after successful sync.', 3)
   }
 } else {
-  logit("No Scrub needed - Days since last scrub:- $scrubNew", 3);
+  logit("No Scrub needed - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3);
 }
 
 # Create symbolic link pool
@@ -210,13 +210,13 @@ sub snap_diff {
   my $output = snap_run("diff");
   
   # Assign values to hash
-  ($diffHash{equal})    = $output =~ /(\d+) equal/;
-  ($diffHash{added})    = $output =~ /(\d+) added/;
-  ($diffHash{removed})  = $output =~ /(\d+) removed/;
-  ($diffHash{updated})  = $output =~ /(\d+) updated/;
-  ($diffHash{moved})    = $output =~ /(\d+) moved/;
-  ($diffHash{copied})   = $output =~ /(\d+) copied/;
-  ($diffHash{restored}) = $output =~ /(\d+) restored/;
+  ($diffHash{equal})    = $output =~ m/(\d+)\s+equal/;
+  ($diffHash{added})    = $output =~ m/(\d+)\s+added/;
+  ($diffHash{removed})  = $output =~ m/(\d+)\s+removed/;
+  ($diffHash{updated})  = $output =~ m/(\d+)\s+updated/;
+  ($diffHash{moved})    = $output =~ m/(\d+)\s+moved/;
+  ($diffHash{copied})   = $output =~ m/(\d+)\s+copied/;
+  ($diffHash{restored}) = $output =~ m/(\d+)\s+restored/;
   
   # If any of the values are not obtained then stop the script.
   if ( !defined $diffHash{equal} or !defined $diffHash{added} or !defined $diffHash{removed} or !defined $diffHash{updated} or !defined $diffHash{moved} or !defined $diffHash{copied} or !defined $diffHash{restored}) {
@@ -224,7 +224,7 @@ sub snap_diff {
   }
   
   # Sync needed?
-  $diffHash{sync} = $output =~ /There are differences/ ? 1 : 0;
+  $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
   
   # Log diff output
   foreach my $key ( sort(keys %diffHash) ) {
@@ -245,10 +245,10 @@ sub snap_status {
   my $output = snap_run("status");
   
   # Critical error. Status shows errors detected.
-  if ( $output !~ /No error detected/ ) { error_die("Critical error: Status shows errors detected"); };
+  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected"); };
   
   # Critical error. Sync currently in progress.
-  if ( $output !~ /No sync is in progress/ ) { error_die("Critical error: Sync currently in progress"); };
+  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); };
   
   # Check for sub second timestamps and correct.
   if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
