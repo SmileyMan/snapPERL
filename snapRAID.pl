@@ -561,11 +561,11 @@ sub logit {
   if ( $logLevel <= $opt{logLevel} or $logLevel == 1) {
     if ( $opt{logStdout} == 1 ) {
       # Send to stdout
-      print ($timeStamp . " :: " . $logText . "\n");
+      print ($timeStamp . " : " . $logText . "\n");
     } 
       
     # Add to log string 
-    $scriptLog .= $timeStamp . " :: " . $logText . "\n";
+    $scriptLog .= $timeStamp . " : " . $logText . "\n";
 
   }
   return 1;
