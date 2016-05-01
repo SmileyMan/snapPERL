@@ -100,7 +100,7 @@ my $options = q{
   ## Sync and Scrub options
   deletedFiles=50                                               #Max amount of deleted files to auto sync
   changedFiles=500                                              #Max amount of changed files to auto sync
-  scrubDays=3                                                   #Number of days before scrub is run 
+  scrubDays=7                                                   #Number of days before scrub is run 
   scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
   scrubAge=10                                                   #Data older than days
   scrubPercentage=8                                             #Percentage of array to scrub
