@@ -165,7 +165,7 @@ if ( $diffHash{sync} ) {
 
 # Scrub needed? If sync is run daily with 'scrub -p new' $scrubNew will allways be 0.
 # So second check on oldest scrubbed block is made and scrub called if needed.
-if ( $scrubNew >= $opt{scrubDays} or $scrubOld <= $opt{scrubOldest} ) {
+if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
   # Do not scrub un sync'ed array!
   if ( $syncSuccess ) {
     logit("Running scrub - Days since last scrub:- $scrubNew", 3);
@@ -272,7 +272,7 @@ sub snap_status {
   
   # Get snapraid version
   $output = snap_run('snapraid --version');
-  ($snapVersion) = $output =~ m/snapraid\s+(v\d+.\d+)/;
+  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
 
   return 1;
 }
