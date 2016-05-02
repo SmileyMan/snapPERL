@@ -124,7 +124,7 @@ my $options = q{
   spinDown=0                                                    #Spindown array once script completed?
   pool=0                                                        #Run pool command if valid config option found?
   logFile=/tmp/script-snapRAID.log                              #Logfile location
-  logLevel=3                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
+  logLevel=4                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
   logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
 };
 
@@ -255,7 +255,7 @@ sub snap_status {
   # Critical error. Sync currently in progress.
   if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); };
   
-  # Check for sub second timestamps and correct.
+  # Check for sub-second timestamps and correct.
   if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
     # Run snapraid touch
     my $touch = snap_run('touch');
@@ -263,10 +263,10 @@ sub snap_status {
       # Log files where time stamps where changed.
       if ( m/touch/ ) { logit("Sub-second timestamp reset on :- $_", 4); }
     }
-    logit("$1 files with sub second timestamps, Snapraid touch command was run", 3);
+    logit("$1 files with sub-second timestamps, Snapraid touch command was run", 3);
   } 
   else {
-    logit('No sub second timestamps detected', 3);
+    logit('No sub-second timestamps detected', 3);
   };
   
   # Get number of days since last scrub
@@ -298,7 +298,7 @@ sub snap_sync {
   foreach ( split /\n/, $output ) {
     
     # Match for excluded files
-    if ( m/Excluding file/ ) { 
+    if ( m/Excluding\s+file/ ) { 
       $excludedCount++; 
     } 
     else { 
@@ -308,7 +308,7 @@ sub snap_sync {
     if ( m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
     
     # Was it a success?
-    if ( m/Everything OK/ ) { $syncSuccess = 1; }
+    if ( m/Everything\s+OK/ ) { $syncSuccess = 1; }
   
   }
   
@@ -497,7 +497,8 @@ sub parse_conf {
         if ( $value =~ /\w+/ ) {
           $conf{$key} = $value; 
         # Has no value so assign boolen
-        } else {
+        } 
+        else {
           $conf{$key} = "Yes";
         }
       }
@@ -524,7 +525,8 @@ sub get_opt_hash {
         # Split Values
         if ( $valueC =~ m/#/ ) {
           ($value, $comment) = split /#/, $valueC;
-        } else {
+        } 
+        else {
           $value = $valueC;
         }
       
@@ -621,11 +623,13 @@ sub debug_log {
       foreach my $diskKey ( keys %{$conf{$confKey}} ) {
         logit("Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5);
       }
-    } elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
+    } 
+    elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
       for ( my $i=0; $i <= $#{$conf{$confKey}}; $i++ )  {
         logit("Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5);
       }
-    } else {
+    } 
+    else {
       logit("Config : $confKey -> $conf{$confKey}", 5);
     }
   }
