@@ -159,10 +159,12 @@ if ( $diffHash{sync} ) {
   if ( $diffHash{removed} <= $opt{deletedFiles} && $diffHash{updated} <= $opt{changedFiles} ) {
     logit("There are differnces. Sync running", 3);
     snap_sync();
-  } else {
+  } 
+  else {
     logit('Warning: Deleted or Changed files exceed limits set. Sync not completed', 2)
   }
-} else {
+} 
+else {
   logit('No differnces. Sync not needed', 3);
 }
 
@@ -173,10 +175,12 @@ if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
   if ( $syncSuccess ) {
     logit("Running scrub - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3);
     snap_scrub("-p $opt{scrubPercentage}", "-o $opt{scrubAge}");
-  } else {
+  } 
+  else {
     logit('Sync was not run. Scrub only performed after successful sync.', 3)
   }
-} else {
+} 
+else {
   logit("No Scrub needed - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3);
 }
 
@@ -264,7 +268,8 @@ sub snap_status {
       if ( m/touch/ ) { logit("Sub-second timestamp reset on :- $_", 4); }
     }
     logit("$1 files with sub-second timestamps, Snapraid touch command was run", 3);
-  } else {
+  } 
+  else {
     logit('No sub-second timestamps detected', 3);
   };
   
@@ -299,7 +304,8 @@ sub snap_sync {
     # Match for excluded files
     if ( m/Excluding\s+?file/ ) { 
       $excludedCount++; 
-    } else { 
+    } 
+    else { 
       $fullLog .= $_ . "\n"; 
     }
     # Get size of data processed
@@ -313,7 +319,8 @@ sub snap_sync {
   if ( $syncSuccess ) {
     # Log details from sync. 
     logit("Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3);
-  } else {
+  } 
+  else {
     # Stop script.
     error_die("Critical error: Sync failed! \n$fullLog"); # Todo: needs testing
   }
@@ -324,7 +331,8 @@ sub snap_sync {
     if ( $snapVersion >= 9.0 ) {
       logit('ScrubNew option set. Scrubing lastest sync data', 3);
       snap_scrub('-p new');
-    } else {
+    } 
+    else {
       logit('Warning: ScrubNew is set but snapraid version must be 9.0 or higher!', 2)
     }
   }
@@ -352,7 +360,8 @@ sub snap_scrub {
   if ( $success ) {
     # Log details from sync.
     logit("Snapraid sync completed: $dataProcessed MB processed", 3);
-  } else {
+  } 
+  else {
     # Stop script.
     error_die("Critical error: Scrub failed!\n$output"); # Todo: Needs Testing
   }
@@ -383,7 +392,8 @@ sub snap_smart {
       # Warn if needed
       if ( $fp > $opt{smartDiskWarn} ) { logit("Warning: Fail percentage for $serial has exceded warning level", 2); } 
     
-    } elsif ( m/next\s+?year\s+?is/ ) {
+    } 
+    elsif ( m/next\s+?year\s+?is/ ) {
       
       # Get FP for array
       my ($arrayFail) = m/next\s+?year\s+?is\s+?(\d+?)%/;
@@ -491,7 +501,8 @@ sub parse_conf {
         if ( $value =~ /\w+/ ) {
           $conf{$key} = $value; 
         # Has no value so assign boolen
-        } else {
+        } 
+        else {
           $conf{$key} = 1;
         }
       }
@@ -518,7 +529,8 @@ sub get_opt_hash {
         # Split Values
         if ( $valueC =~ m/#/ ) {
           ($value, $comment) = split /#/, $valueC;
-        } else {
+        } 
+        else {
           $value = $valueC;
         }
       
@@ -613,14 +625,16 @@ sub debug_log {
   foreach my $confKey( sort(keys %conf) ) {
     if ( ref($conf{$confKey}) eq "HASH" ) {
       foreach my $diskKey ( keys %{$conf{$confKey}} ) {
-        logit("Config :: $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5);
+        logit("Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5);
       }
-    } elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
+    } 
+    elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
       for ( my $i=0; $i <= $#{$conf{$confKey}}; $i++ )  {
-        logit("Config :: $confKey -> $i -> $conf{$confKey}->[$i]", 5);
+        logit("Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5);
       }
-    } else {
-      logit("Config :: $confKey -> $conf{$confKey}", 5);
+    } 
+    else {
+      logit("Config : $confKey -> $conf{$confKey}", 5);
     }
   }
   logit('-------- Config End--------', 5);
@@ -654,3 +668,4 @@ sub error_die {
 1;
 
 __END__
+
