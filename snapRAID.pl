@@ -84,8 +84,6 @@ package snapRAID;
 use strict;
 use warnings;
 
-# use Try::Tiny;
-
 ############################## Define User Variables ########################################
 
 # Sub is called to build option hash. Makes it more readable (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
@@ -122,14 +120,12 @@ my $options = q{
   snapRaidBin=/usr/local/bin/snapraid                           #Snapriad binary location
   mailBin=/usr/bin/mutt                                         #Email binary location
   curlBin=/usr/bin/curl                                         #Curl binary location
-
   ## Other Options
   spinDown=0                                                    #Spindown array once script completed?
-  pool=1                                                        #Run pool command if valid config option found?
+  pool=0                                                        #Run pool command if valid config option found?
   logFile=/tmp/script-snapRAID.log                              #Logfile location
   logLevel=3                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
-  logStdout=0                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
-
+  logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
 };
 
 ############################## Script only from here ########################################
@@ -218,13 +214,13 @@ sub snap_diff {
   my $output = snap_run('diff');
   
   # Assign values to hash
-  ($diffHash{equal})    = $output =~ m/(\d+)\s+?equal/;
-  ($diffHash{added})    = $output =~ m/(\d+)\s+?added/;
-  ($diffHash{removed})  = $output =~ m/(\d+)\s+?removed/;
-  ($diffHash{updated})  = $output =~ m/(\d+)\s+?updated/;
-  ($diffHash{moved})    = $output =~ m/(\d+)\s+?moved/;
-  ($diffHash{copied})   = $output =~ m/(\d+)\s+?copied/;
-  ($diffHash{restored}) = $output =~ m/(\d+)\s+?restored/;
+  ($diffHash{equal})    = $output =~ m/(\d+)\s+equal/;
+  ($diffHash{added})    = $output =~ m/(\d+)\s+added/;
+  ($diffHash{removed})  = $output =~ m/(\d+)\s+removed/;
+  ($diffHash{updated})  = $output =~ m/(\d+)\s+updated/;
+  ($diffHash{moved})    = $output =~ m/(\d+)\s+moved/;
+  ($diffHash{copied})   = $output =~ m/(\d+)\s+copied/;
+  ($diffHash{restored}) = $output =~ m/(\d+)\s+restored/;
   
   # If any of the values are not obtained then stop the script.
   # Todo: Not happy with this and will be back
@@ -233,7 +229,7 @@ sub snap_diff {
   }
   
   # Sync needed?
-  $diffHash{sync} = $output =~ m/There\s+?are\s+?differences/ ? 1 : 0;
+  $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
   
   # Log diff output
   foreach my $key ( sort(keys %diffHash) ) {
@@ -254,34 +250,34 @@ sub snap_status {
   my $output = snap_run('status');
   
   # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+?error\s+?detected/ ) { error_die("Critical error: Status shows errors detected"); };
+  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected"); };
   
   # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+?sync\s+?is\s+?in\s+?progress/ ) { error_die("Critical error: Sync currently in progress"); };
+  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); };
   
-  # Check for sub-second timestamps and correct.
-  if ( $output =~ m/You have\s+?(\d+?)\s+?files/ ) {
+  # Check for sub second timestamps and correct.
+  if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
     # Run snapraid touch
-    my $touch = snap_run("touch");
+    my $touch = snap_run('touch');
     foreach ( split /\n/, $touch ) {
       # Log files where time stamps where changed.
       if ( m/touch/ ) { logit("Sub-second timestamp reset on :- $_", 4); }
     }
-    logit("$1 files with sub-second timestamps, Snapraid touch command was run", 3);
+    logit("$1 files with sub second timestamps, Snapraid touch command was run", 3);
   } 
   else {
-    logit('No sub-second timestamps detected', 3);
+    logit('No sub second timestamps detected', 3);
   };
   
   # Get number of days since last scrub
-  ($scrubNew) = $output =~ m/the\s+?newest\s+?(\d+?)./;
+  ($scrubNew) = $output =~ m/the\s+newest\s+(\d+)./;
   
   # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
-  ($scrubOld) = $output =~ m/scrubbed\s+?(\d+?)\s+?days\s+?ago/;
+  ($scrubOld) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
   
   # Get snapraid version
   $output = snap_run('snapraid --version');
-  ($snapVersion) = $output =~ m/snapraid\s+?v(\d+?.\d+?)/;
+  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
 
   return 1;
 }
@@ -302,17 +298,17 @@ sub snap_sync {
   foreach ( split /\n/, $output ) {
     
     # Match for excluded files
-    if ( m/Excluding\s+?file/ ) { 
+    if ( m/Excluding file/ ) { 
       $excludedCount++; 
     } 
     else { 
       $fullLog .= $_ . "\n"; 
     }
     # Get size of data processed
-    if ( m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+?(\d+?)\s+?MB\s+?processed/; }
+    if ( m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
     
     # Was it a success?
-    if ( m/Everything\s+?OK/ ) { $syncSuccess = 1; }
+    if ( m/Everything OK/ ) { $syncSuccess = 1; }
   
   }
   
@@ -322,7 +318,7 @@ sub snap_sync {
   } 
   else {
     # Stop script.
-    error_die("Critical error: Sync failed! \n$fullLog"); # Todo: needs testing
+    error_die("Critical error: Sync failed! \n$fullLog"); # todo
   }
   
   # New in snapraid. Verify new data from sync.
@@ -344,18 +340,18 @@ sub snap_sync {
 # Perform a scrub on array
 # usage snap_scrub('Plan to use staring with -p', 'Min age to scrub starting with -o'); 
 sub snap_scrub {
-    
-  # Grab first to elements of passed array.
+  
+  # Grab first to elements of passed array.  
   my ($plan, $age) = @_;
   my ($dataProcessed, $success);
     
   my $output = snap_run($plan, $age, 'scrub');
 
   #Get size of data processed
-  if ( $output =~ m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+?(\d+?)\s+?MB\s+?processed/; }
+  if ( $output =~ m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
   
   # Was it a success?
-  if ( $output =~ m/Everything\s+?OK/ ) { $success = 1; }
+  if ( $output =~ m/Everything\s+OK/ ) { $success = 1; }
   
   if ( $success ) {
     # Log details from sync.
@@ -363,7 +359,7 @@ sub snap_scrub {
   } 
   else {
     # Stop script.
-    error_die("Critical error: Scrub failed!\n$output"); # Todo: Needs Testing
+    error_die("Critical error: Scrub failed!\n$output"); # todo
   }
   return 1;
 }
@@ -382,10 +378,10 @@ sub snap_smart {
   
     # Match snapraid log for disk info
     # Todo: Not happy with this. Works fine but messy and unreadble... To re-visit
-    if ( m/\s+?\d+?\s+?\d+?\s+?\d+?\s+?\d+?%\s+?\d\.\d\s+?[A-Za-z0-9-]+?\s+?[\/a-z]+?\s+?\w+?/ ) {
+    if ( m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/ ) {
       
       # Get params
-      my ($temp, $days, $error, $fp, $size, $serial, $device, $disk) = m/\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)%\s+?(\d\.\d)\s+?([A-Za-z0-9-]+?)\s+?([\/a-z]+?)\s+?(\w+?)/;
+      my ($temp, $days, $error, $fp, $size, $serial, $device, $disk) = m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
       $fp = sprintf("%02d", $fp);    
       logit("Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 3);
       
@@ -393,10 +389,10 @@ sub snap_smart {
       if ( $fp > $opt{smartDiskWarn} ) { logit("Warning: Fail percentage for $serial has exceded warning level", 2); } 
     
     } 
-    elsif ( m/next\s+?year\s+?is/ ) {
+    elsif ( m/next\s+year\s+is/ ) {
       
       # Get FP for array
-      my ($arrayFail) = m/next\s+?year\s+?is\s+?(\d+?)%/;
+      my ($arrayFail) = m/next\s+year\s+is\s+(\d+)%/;
       logit("Calculated chance of at least one drive failing in the next year is $arrayFail%", 3);
       
       # Warn if needed
@@ -439,7 +435,7 @@ sub snap_pool {
     my $output = snap_run('pool');
     
     # Get number of links created
-    my ($links) = $output =~ m/(\d+?)\s+?links/;
+    my ($links) = $output =~ m/(\d+)\s+links/;
     logit("Pool command run and $links links created in $conf{pool}", 3);
   }
   return 1;
@@ -481,7 +477,7 @@ sub parse_conf {
   foreach ( split /\n/, $confData ) {
     s/^\s+//g;             # Remove leading whitespace
     # If not commented out or empty line
-    if ( !m/^#|^\w+/ ) {
+    if ( !m/^#/ && m/^\w+/ ) {
       my ($key, $value) = split /\s/, $_, 2;
       $key   =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
       $value =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
@@ -501,9 +497,8 @@ sub parse_conf {
         if ( $value =~ /\w+/ ) {
           $conf{$key} = $value; 
         # Has no value so assign boolen
-        } 
-        else {
-          $conf{$key} = 1;
+        } else {
+          $conf{$key} = "Yes";
         }
       }
     }
@@ -529,8 +524,7 @@ sub get_opt_hash {
         # Split Values
         if ( $valueC =~ m/#/ ) {
           ($value, $comment) = split /#/, $valueC;
-        } 
-        else {
+        } else {
           $value = $valueC;
         }
       
@@ -627,13 +621,11 @@ sub debug_log {
       foreach my $diskKey ( keys %{$conf{$confKey}} ) {
         logit("Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5);
       }
-    } 
-    elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
+    } elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
       for ( my $i=0; $i <= $#{$conf{$confKey}}; $i++ )  {
         logit("Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5);
       }
-    } 
-    else {
+    } else {
       logit("Config : $confKey -> $conf{$confKey}", 5);
     }
   }
