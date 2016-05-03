@@ -30,10 +30,11 @@ use strict;
 use warnings;
 
 # Modules
-use MIME::Lite;
-use Email::Send;
-use Email::Send::Gmail;
-use Email::Simple::Creator;
+# Need to load these on demand - No point loading if emailSend set to 0 (Email support work in progress)
+#use MIME::Lite;
+#use Email::Send;
+#use Email::Send::Gmail;
+#use Email::Simple::Creator;
 
 ############################## Define User Variables ########################################
 
