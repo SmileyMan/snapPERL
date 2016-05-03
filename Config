@@ -1,4 +1,5 @@
-# Sub is called to build option hash. Makes it more readable (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
+# Sub is called to build option hash. Makes it more readable 
+# (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
 ## Email Options
 emailSend=0                                                   #Send email?
 emailAddress=#########@#######.com                            #Email address
