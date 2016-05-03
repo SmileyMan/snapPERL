@@ -223,12 +223,7 @@ sub snap_diff {
   ($diffHash{copied})   = $output =~ m/(\d+)\s+copied/;
   ($diffHash{restored}) = $output =~ m/(\d+)\s+restored/;
   
-  # If any of the values are not obtained then stop the script.
-  # Todo: Not happy with this and will be back
-  #if ( !defined $diffHash{equal} or !defined $diffHash{added} or !defined $diffHash{removed} or !defined $diffHash{updated} or !defined $diffHash{moved} or !defined $diffHash{copied} or !defined $diffHash{restored}) {
-  #  error_die('Critical error: Values missing from snapraid diff.')
-  #}
-  
+  # If any of the diff values missing stop script.
   foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
     if ( !defined $diffHash{$diffKey} ) {
       logit("Warning: Missing value \'$diffKey\' during diff command!", 2);
@@ -271,7 +266,11 @@ sub snap_status {
     my $touch = snap_run('touch');
     foreach ( split /\n/, $touch ) {
       # Log files where time stamps where changed.
-      if ( m/touch/ ) { logit("Sub-second timestamp reset on :- $_", 4); }
+      if ( m/touch/ ) { 
+      	# Remove word 'touch' before logging
+      	s/touch\s//;
+      	logit("Sub-second timestamp reset on :- $_", 4); 
+      }
     }
     logit("$1 files with sub-second timestamps, Snapraid touch command was run", 3);
   } 
@@ -459,7 +458,7 @@ sub snap_pool {
 sub snap_run {
 
   my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @_";
-  logit("Running snapraid command: $snapCmd", 3);
+  logit("Running snapraid command: $snapCmd", 4);
   
   # Run command and return output to caller.
   # Todo: Try catch to be implemented...
