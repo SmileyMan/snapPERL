@@ -228,9 +228,9 @@ sub snap_diff {
   #  error_die('Critical error: Values missing from snapraid diff.')
   #}
   
-  foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
-    if ( !$diffHash{$diffKey} ) {
-      logit("Warning: Missing value $diffKey during diff command!", 2);
+  foreach my $diffKey (qw( equal added removed updated moved copied restored test)) {
+    if ( !defined $diffHash{$diffKey} ) {
+      logit("Warning: Missing value \'$diffKey\' during diff command!", 2);
       $missingValues = 1;
     }
   }
