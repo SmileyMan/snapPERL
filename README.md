@@ -53,6 +53,12 @@ by Zack Read (http://zackreed.me) - Extended and converted to PERL
 Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
 I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
 
+#Work in Progress.
+
+Please have a play but expect bugs / things going wrong. This is just a wrapper for snapraid.exe
+and only ever calls diff/status/sync/scrub/smart/down so data should always be safe
+(only snapraid.exe manipulates the data)
+
 This SOFTWARE PRODUCT is provided by THE PROVIDER "as is" and "with all faults." 
 THE PROVIDER makes no representations or warranties of any kind concerning the safety, 
 suitability, lack of viruses, inaccuracies, typographical errors, or other harmful 
