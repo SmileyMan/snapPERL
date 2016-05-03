@@ -1,0 +1,2 @@
+# Required modules
+Email::Send::Gmail -> command: sudo cpan Email::Send::Gmail
