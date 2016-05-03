@@ -224,18 +224,18 @@ sub snap_diff {
   
   # If any of the values are not obtained then stop the script.
   # Todo: Not happy with this and will be back
-  if ( !defined $diffHash{equal} or !defined $diffHash{added} or !defined $diffHash{removed} or !defined $diffHash{updated} or !defined $diffHash{moved} or !defined $diffHash{copied} or !defined $diffHash{restored}) {
-    error_die('Critical error: Values missing from snapraid diff.')
-  }
-  
-  #foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
-  #  if ( not defined $diffHash{$diffKey} ) {
-  #    logit("Warning: Missing value $diffKey during diff command!, 2);
-  #    $missingValues = 1;
-  #  }
+  #if ( !defined $diffHash{equal} or !defined $diffHash{added} or !defined $diffHash{removed} or !defined $diffHash{updated} or !defined $diffHash{moved} or !defined $diffHash{copied} or !defined $diffHash{restored}) {
+  #  error_die('Critical error: Values missing from snapraid diff.')
   #}
   
-  #if ( $missingValues ) { error_die('Critical error: Values missing from snapraid diff.'); }
+  foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
+    if ( !$diffHash{$diffKey} ) {
+      logit("Warning: Missing value $diffKey during diff command!", 2);
+      $missingValues = 1;
+    }
+  }
+  
+  if ( $missingValues ) { error_die('Critical error: Values missing from snapraid diff.'); }
   
   # Sync needed?
   $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
