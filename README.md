@@ -1,4 +1,4 @@
-# Script-snapRAID-PERL
+# snapPERL
 Helper script for snapraid created in PERL
 
 
@@ -65,7 +65,7 @@ distributing this SOFTWARE PRODUCT.
 
  CHANGELOG
  ---------
- 01/05/2016 Initial release - Working but no alerts or emails. Only logfile.
+ 01/05/2016 Uploaded to Git-Hub. Working script with logfile. No messages/emails or alerts yet.
 
 
 
