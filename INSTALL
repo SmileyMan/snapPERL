@@ -17,5 +17,5 @@ MIME::Lite          ->  command: sudo cpan install MIME:Lite
 9. crontab -e
 add 
     0 2 * * * ~/snapPERL/snapPERL.pl >/dev/null 2>&1 
-to crontab and save (Run at 2am each day adjust has needed)
+to crontab and save (Run at 2am each day adjust as needed)
 10. exit
