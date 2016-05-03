@@ -1,14 +1,14 @@
 # Required modules
-Email::Send::Gmail  ->  command: sudo cpan Email::Send::Gmail
-MIME::Lite          ->  command: sudo cpan install MIME:Lite
+Email::Send::Gmail (If using gmail)  ->  command: sudo cpan Email::Send::Gmail
+MIME::Lite (if using email)          ->  command: sudo cpan install MIME:Lite
 
 #Install
 
 (Run has root so recommend script placed in root home)
 
 1. sudo apt-get install git
-2. sudo cpan Email::Send::Gmail
-3. sudo cpan install MIME:Lite
+2. sudo cpan Email::Send::Gmail (If using gmail)
+3. sudo cpan install MIME:Lite (If using email)
 4. sudo -i
 5. git clone https://github.com/SmileyMan/snapPERL.git
 6. cd snapPERL
