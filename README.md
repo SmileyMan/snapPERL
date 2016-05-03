@@ -59,6 +59,8 @@ Please have a play but expect bugs / things going wrong. This is just a wrapper 
 and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
 (only snapraid.exe manipulates the data)
 
+#Disclaimer
+
 This SOFTWARE PRODUCT is provided by THE PROVIDER "as is" and "with all faults." 
 THE PROVIDER makes no representations or warranties of any kind concerning the safety, 
 suitability, lack of viruses, inaccuracies, typographical errors, or other harmful 
@@ -69,7 +71,7 @@ responsible for the protection of your equipment and backup of your data, and TH
 will not be liable for any damages you may suffer in connection with using, modifying, or 
 distributing this SOFTWARE PRODUCT. 
 
- CHANGELOG
+#CHANGELOG
  ---------
  01/05/2016 Uploaded to Git-Hub. Working script with logfile. No messages/emails or alerts yet.
 
