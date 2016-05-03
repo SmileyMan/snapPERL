@@ -71,8 +71,11 @@ distributing this SOFTWARE PRODUCT.
 
 #Todo
 
+           Add catches for snapraid DANGER! and Warning! messages
            Add pushover support and messages
            Add email support and messages
+           check data and parity disks are present
+           Check and confirm conf settings
            Mount and unmount parity
            Go over code and clean
            Drink beer!
