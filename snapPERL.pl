@@ -18,7 +18,7 @@
 #
 # CHANGELOG
 # ---------
-# 01/05/2016 Initial release - Working but no alerts or emails. Only logfile.
+# 01/05/2016 Uploaded to Git-Hub. Working script with logfile. No messages/emails or alerts yet.
 #
 #############################################################################################
 
@@ -29,14 +29,24 @@ use 5.010;
 use strict;
 use warnings;
 
+# Modules
+use MIME::Lite;
+use Email::Send;
+use Email::Send::Gmail;
+use Email::Simple::Creator;
+
 ############################## Define User Variables ########################################
 
+# todo: remove and load from external file
 # Sub is called to build option hash. Makes it more readable (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
 my $options = q{
   
   ## Email Options
   emailSend=0                                                   #Send email?
   emailAddress=#########@#######.com                            #Email address
+  useGmail=1                                                    #Use Gmail to send mail
+  gmailPass="****************"                                  #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
+                                                                #If not please please please chmod 600 to root on config file.. PLEASE!
   
   ## Pushover Options
   pushOverSend=0                                                #Send pushover alerts?
@@ -496,6 +506,52 @@ sub get_opt_hash {
   return 1;
 }
 
+sub email_send {
+	
+  if ( $opt{useGmail} ) {
+    
+    # Great gmail email
+    my $email = Email::Simple->create(
+      header => [
+        From    => $opt{emailAddress},
+        To      => $opt{emailAddress},
+        Subject => "[$hostname] - snapPERL Log. Please see message body",
+      ],
+      body => $scriptLog,
+    );
+
+    # Account details for gmail
+    my $sender = Email::Send->new(
+      {   mailer      => 'Gmail',
+          mailer_args => [
+            username => $opt{emailAddress},
+            password => $opt{gmailPass},
+          ]
+      }
+    );
+  
+    # Send using gmail SMTP
+    eval { $sender->send($email) };
+    #die "Error sending email: $@" if $@;
+  
+  }
+  else {
+ 
+    # Send email via localy configured email server. 
+    my $msg = MIME::Lite->new(
+                                From     => $opt{emailAddress},
+                                To       => $opt{emailAddress},
+                                Subject  => "[$hostname] - snapPERL Log. Please see message body",
+                                Data     => $scriptLog,
+                              );
+    
+    # Send.             
+    $msg->send;
+    
+  }
+  return 1;
+}
+
 ##
 # sub time_stamp();
 # Create a timestamp for the log.
@@ -531,7 +587,7 @@ sub logit {
   if ( $logLevel <= $opt{logLevel} or $logLevel == 1) {
     if ( $opt{logStdout} == 1 ) {
       # Send to stdout
-      print ($timeStamp . " : " . $logText . "\n");
+      say ($timeStamp . " : " . $logText);
     } 
       
     # Add to log string 
@@ -550,7 +606,7 @@ sub write_log {
   # Write log to file
   # Todo: Try and Catch instead of killing script
   open my $fh, '>', $opt{logFile} or die("Critical error: Unable to open logfile file. Please check config");
-  print {$fh} $scriptLog;
+  say {$fh} $scriptLog;
   close $fh;
 
   return 1;

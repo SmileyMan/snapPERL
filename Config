@@ -2,6 +2,9 @@
 ## Email Options
 emailSend=0                                                   #Send email?
 emailAddress=#########@#######.com                            #Email address
+useGmail=1                                                    #Use Gmail to send mail 
+gmailPass="****************"                                  #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
+                                                              #If not please please please chmod 600 to root on config file.. PLEASE!
   
 ## Pushover Options
 pushOverSend=0                                                #Send pushover alerts?
@@ -28,7 +31,6 @@ snapRaidConf=/etc/snapraid.conf                               #Location of snapr
  
 ## Binary locations
 snapRaidBin=/usr/local/bin/snapraid                           #Snapriad binary location
-mailBin=/usr/bin/mutt                                         #Email binary location
 curlBin=/usr/bin/curl                                         #Curl binary location
 
 ## Other Options
