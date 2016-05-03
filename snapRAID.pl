@@ -81,6 +81,7 @@
 package snapRAID;
 
 # Pragmas 
+use 5.010;
 use strict;
 use warnings;
 
@@ -351,7 +352,8 @@ sub snap_sync {
 sub snap_scrub {
   
   # Grab first to elements of passed array.  
-  my ($plan, $age) = @_;
+  my $plan = shift;
+  my $age  = shift // '';
   my ($dataProcessed, $success);
     
   my $output = snap_run($plan, $age, 'scrub');
