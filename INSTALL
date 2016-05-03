@@ -1,2 +1,3 @@
 # Required modules
-Email::Send::Gmail -> command: sudo cpan Email::Send::Gmail
+Email::Send::Gmail  ->  command: sudo cpan Email::Send::Gmail
+MIME::Lite          ->  sudo cpan install MIME:Lite
