@@ -506,8 +506,13 @@ sub get_opt_hash {
   return 1;
 }
 
+##
+# sub get_email_send
+# Send the scriptLog out via email;
+# usage get_email_send();
 sub email_send {
 	
+  # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
     
     # Great gmail email
@@ -522,11 +527,11 @@ sub email_send {
 
     # Account details for gmail
     my $sender = Email::Send->new(
-      {   mailer      => 'Gmail',
-          mailer_args => [
-            username => $opt{emailAddress},
-            password => $opt{gmailPass},
-          ]
+      {  mailer      => 'Gmail',
+         mailer_args => [
+           username    => $opt{emailAddress},
+           password    => $opt{gmailPass},
+         ]
       }
     );
   
@@ -537,13 +542,13 @@ sub email_send {
   }
   else {
  
-    # Send email via localy configured email server. 
+    # Send email via localy configured email server. (Not tested yet I don't run local email server)
     my $msg = MIME::Lite->new(
-                                From     => $opt{emailAddress},
-                                To       => $opt{emailAddress},
-                                Subject  => "[$hostname] - snapPERL Log. Please see message body",
-                                Data     => $scriptLog,
-                              );
+      From    => $opt{emailAddress},
+      To      => $opt{emailAddress},
+      Subject => "[$hostname] - snapPERL Log. Please see message body",
+      Data    => $scriptLog,
+    );
     
     # Send.             
     $msg->send;
