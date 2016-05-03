@@ -208,7 +208,7 @@ write_log();
 sub snap_diff {
   
   # Define local variables
-  my $diffLogTxt;
+  my ($diffLogTxt, $missingValues);
   
   # Run snapraid diff
   my $output = snap_run('diff');
@@ -227,6 +227,15 @@ sub snap_diff {
   if ( !defined $diffHash{equal} or !defined $diffHash{added} or !defined $diffHash{removed} or !defined $diffHash{updated} or !defined $diffHash{moved} or !defined $diffHash{copied} or !defined $diffHash{restored}) {
     error_die('Critical error: Values missing from snapraid diff.')
   }
+  
+  #foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
+  #  if ( not defined $diffHash{$diffKey} ) {
+  #    logit("Warning: Missing value $diffKey during diff command!, 2);
+  #    $missingValues = 1;
+  #  }
+  #}
+  
+  #if ( $missingValues ) { error_die('Critical error: Values missing from snapraid diff.'); }
   
   # Sync needed?
   $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
