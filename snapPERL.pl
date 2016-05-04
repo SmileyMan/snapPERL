@@ -22,7 +22,7 @@
 #
 #############################################################################################
 
-package snapRAID;
+package snapPERL;
 
 # Pragmas 
 use 5.010;
@@ -444,6 +444,8 @@ sub parse_conf {
     # If not commented out or empty line
     if ( !m/^#/ && m/^\w+/ ) {
       my ($key, $value) = split /\s/, $_, 2;
+      # Stop uninitialized warnings if there is no whitespace after key only option https://github.com/SmileyMan/snapPERL/issues/1
+      if ( !defined $value ) { $value = ''; }
       $key   =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
       $value =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
       # Process extra parity
