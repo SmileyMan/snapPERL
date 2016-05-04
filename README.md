@@ -80,6 +80,7 @@ distributing this SOFTWARE PRODUCT.
 #Todo
 
            Add catches for snapraid DANGER! and Warning! messages
+           Catch snapraid.exe stderr and action/log it
            Add pushover support and messages
            Add email support and messages
            Config data read from external file
