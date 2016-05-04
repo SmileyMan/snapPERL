@@ -1,21 +1,29 @@
-# Required modules
-Email::Send::Gmail (If using gmail)  ->  command: sudo cpan Email::Send::Gmail
-MIME::Lite (if using email)          ->  command: sudo cpan install MIME:Lite
+# Required Perl Modules
+Email::Send::Gmail (If using gmail)  ->  command: sudo cpan install Email::Send::Gmail
+MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
 
 #Install
 
-(Run has root so recommend script placed in root home)
-
+# Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
 1. sudo apt-get install git
-2. sudo cpan Email::Send::Gmail (If using gmail)
-3. sudo cpan install MIME:Lite (If using email)
-4. sudo -i
-5. git clone https://github.com/SmileyMan/snapPERL.git
-6. cd snapPERL
-7. gedit/vi/nano Config (Modify setting to suit)
-8. ./snapPERL.pl to confirm all runs ok
-9. crontab -e
+2. git clone https://github.com/SmileyMan/snapPERL.git
+3. You can of course run as a root crontab. Be happy it does what you need first.
+
+#### For stable release don't follow yet ####
+(Run as root so recommend script placed in root home)
+1. sudo apt-get install git
+2. sudo -i
+3. git clone https://github.com/SmileyMan/snapPERL.git
+4. cd snapPERL
+5. gedit/vi/nano Config (Modify setting to suit)
+6. ./snapPERL.pl to confirm all runs ok
+7. crontab -e
 add 
     0 2 * * * ~/snapPERL/snapPERL.pl >/dev/null 2>&1 
 to crontab and save (Run at 2am each day adjust as needed)
-10. exit
+8. exit
+
+If using email
+1. sudo cpan install Email::Send::Gmail (If using gmail)
+2. sudo cpan install MIME:Lite (If using email)
+ 
