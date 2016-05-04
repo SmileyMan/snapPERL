@@ -27,58 +27,14 @@ use warnings;
 
 # Modules
 # Need to load these on demand - No point loading if emailSend set to 0 (Email support work in progress)
-#use MIME::Lite;
-#use Email::Send;
-#use Email::Send::Gmail;
-#use Email::Simple::Creator;
+use MIME::Lite;
+use Email::Send;
+use Email::Send::Gmail;
+use Email::Simple::Creator;
 
-############################## Define User Variables ########################################
+my $options;
 
-# todo: remove and load from external file
-# Sub is called to build option hash. Makes it more readable (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
-my $options = q{
-  
-  ## Email Options
-  emailSend=0                                                   #Send email?
-  emailAddress=#########@#######.com                            #Email address
-  useGmail=1                                                    #Use Gmail to send mail
-  gmailPass="****************"                                  #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
-                                                                #If not please please please chmod 600 to root on config file.. PLEASE!
-  
-  ## Pushover Options
-  pushOverSend=0                                                #Send pushover alerts?
-  pushOverKey=################################                  #Pushover user key
-  pushOverToken=##############################                  #Pushover app token
-  pushOverUrl=https://api.pushover.net/1/messages.json          #Pushover url to send messages
-  
-  ## Sync and Scrub options
-  deletedFiles=50                                               #Max amount of deleted files to auto sync
-  changedFiles=500                                              #Max amount of changed files to auto sync
-  scrubDays=7                                                   #Number of days before scrub is run 
-  scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
-  scrubAge=10                                                   #Data older than days
-  scrubPercentage=8                                             #Percentage of array to scrub
-  useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in latest versions of snapraid).
-  
-  ## Smart options
-  smartLog=1                                                    #Check and log Smart data. 
-  smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings
-  smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
-  
-  ## Snapraid options
-  snapRaidConf=/etc/snapraid.conf                               #Location of snapraid conf file
-  
-  ## Binary locations
-  snapRaidBin=/usr/local/bin/snapraid                           #Snapriad binary location
-  mailBin=/usr/bin/mutt                                         #Email binary location
-  curlBin=/usr/bin/curl                                         #Curl binary location
-  ## Other Options
-  spinDown=0                                                    #Spindown array once script completed?
-  pool=0                                                        #Run pool command if valid config option found?
-  logFile=/tmp/script-snapRAID.log                              #Logfile location
-  logLevel=4                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
-  logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
-};
+require "./snapRAID-Local.conf";
 
 ############################## Script only from here ########################################
 
