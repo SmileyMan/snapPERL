@@ -514,7 +514,7 @@ sub email_send {
   # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
     
-    # Great gmail email
+    # Create gmail email
     my $email = Email::Simple->create(
       header => [
         From    => $opt{emailAddress},
