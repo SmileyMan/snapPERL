@@ -98,9 +98,13 @@ if ( $opt{spinDown} ) { snap_spindown(); }
 
 logit('Script Completed', 3);
 
-# Add debug information to log.
+# Add debug information to log
 if ( $opt{logLevel} >= 5 ) { debug_log(); }
 
+# Send email if enabled
+if ( $opt{emailSend} ) { email_send(); }
+
+# Write log to location in $opt{logFile}
 write_log();
 
 #-------- Script End --------#
@@ -414,10 +418,10 @@ sub parse_conf {
       else { 
         if ( $value =~ /\w+/ ) {
           $conf{$key} = $value; 
-        # Has no value so assign boolen
         } 
+        # Has no value so assign boolean
         else {
-          $conf{$key} = "Yes";
+          $conf{$key} = 1;
         }
       }
     }
