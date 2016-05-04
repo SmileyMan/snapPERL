@@ -27,7 +27,8 @@ use warnings;
 
 # Modules
 # Need to load these on demand - No point loading if emailSend set to 0 (Email support work in progress)
-use MIME::Lite;
+#use MIME::Lite;
+use Module::Load;
 use Email::Send;
 use Email::Send::Gmail;
 use Email::Simple::Creator;
@@ -488,7 +489,7 @@ sub email_send {
       header => [
         From    => $opt{emailAddress},
         To      => $opt{emailAddress},
-        Subject => "[$hostname] - snapPERL Log. Please see message body",
+        Subject => "\[$hostname\] - snapPERL Log. Please see message body",
       ],
       body => $scriptLog,
     );
@@ -514,7 +515,7 @@ sub email_send {
     my $msg = MIME::Lite->new(
       From    => $opt{emailAddress},
       To      => $opt{emailAddress},
-      Subject => "[$hostname] - snapPERL Log. Please see message body",
+      Subject => "\[$hostname\] - snapPERL Log. Please see message body",
       Data    => $scriptLog,
     );
     
