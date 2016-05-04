@@ -15,8 +15,8 @@ MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
 2. sudo -i
 3. git clone https://github.com/SmileyMan/snapPERL.git
 4. cd snapPERL
-5. chmod 600 snapPERL.conf
-6. chmod 755 snapPERL.pl
+5. chmod 600 ./snapPERL.conf
+6. chmod +x ./snapPERL.pl
 5. gedit/vi/nano snapPERL.conf (Modify setting to suit)
 6. ./snapPERL.pl to confirm all runs ok
 7. crontab -e

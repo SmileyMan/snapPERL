@@ -1,1 +1,4 @@
 
+04/05/2016 Created CHANGELOG file. Renamed conf file. Template for install script.
+03/05/2016 Added email function. Testing to be completed. Various code fixes/changes
+01/05/2016 Uploaded to Git-Hub. Working script with logfile. No messages/emails or alerts yet.

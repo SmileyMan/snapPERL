@@ -71,10 +71,6 @@ responsible for the protection of your equipment and backup of your data, and TH
 will not be liable for any damages you may suffer in connection with using, modifying, or 
 distributing this SOFTWARE PRODUCT. 
 
-#CHANGELOG
- ---------
- 01/05/2016 Uploaded to Git-Hub. Working script with logfile. No messages/emails or alerts yet.
-
 
 
 #Todo

@@ -16,10 +16,6 @@
 # Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
 # I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
 #
-# CHANGELOG
-# ---------
-# 01/05/2016 Uploaded to Git-Hub. Working script with logfile. No messages/emails or alerts yet.
-#
 #############################################################################################
 
 package snapPERL;
