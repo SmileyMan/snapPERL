@@ -32,11 +32,10 @@ use Email::Send;
 use Email::Send::Gmail;
 use Email::Simple::Creator;
 
-my $options;
-
-require "./snapRAID-Local.conf";
-
 ############################## Script only from here ########################################
+
+# Define options file
+my $optionsFile = 'snapPERL-Local.conf';
 
 # Define Script Varibles
 my $hostname = qx/hostname/;
@@ -385,7 +384,7 @@ sub parse_conf {
   # Slurp the conf file :P
   {
     open my $fh, '<', $opt{snapRaidConf} or error_die("Critical error: Unable to open conf file. Please check config");
-    local $/ = undef;   # Don't clober gobal version.
+    local $/ = undef;   # Don't clobber global version.
     $confData = <$fh>;
     close $fh;
   }
@@ -431,6 +430,16 @@ sub parse_conf {
 # Build option hash from $options at start of script;
 # usage get_opt_hash();
 sub get_opt_hash {
+  
+  my $options;
+  
+  # Slurp the conf file :P
+  {
+    open my $fh, '<', $optionsFile or error_die("Critical error: Unable to open options file. Does it exist?");
+    local $/ = undef;   # Don't clobber global version.
+    $options = <$fh>;
+    close $fh;
+  }
   
   # Cycle though options and build hash
   foreach ( split /\n/, $options ) {
