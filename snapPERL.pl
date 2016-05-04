@@ -29,7 +29,6 @@ use warnings;
 # Need to load these on demand - No point loading if emailSend set to 0 (Email support work in progress)
 #use MIME::Lite;
 use Module::Load;
-use Encode qw(encode);
 use Email::Send;
 use Email::Send::Gmail;
 use Email::Simple::Creator;
@@ -41,6 +40,9 @@ my $optionsFile = 'snapPERL-Local.conf';
 
 # Define Script Varibles
 my $hostname = qx/hostname/;
+# Remove vertical/leading and trailing whitespace from hostname (Email issue)
+$hostname =~ s/^\s+|\s+$//g;
+
 my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion);
 my (%diffHash, %opt, %conf);
 
@@ -490,7 +492,7 @@ sub email_send {
       header => [
         From    => $opt{emailAddress},
         To      => $opt{emailAddress},
-        Subject => Encode::encode('MIME-header', "\[$hostname\] - snapPERL Log. Please see message body"),
+        Subject =>  "\[$hostname\] - snapPERL Log. Please see message body",
       ],
       body => $scriptLog,
     );
@@ -516,7 +518,7 @@ sub email_send {
     my $msg = MIME::Lite->new(
       From    => $opt{emailAddress},
       To      => $opt{emailAddress},
-      Subject => Encode::encode('MIME-header', "\[$hostname\] - snapPERL Log. Please see message body"),
+      Subject => "\[$hostname\] - snapPERL Log. Please see message body",
       Data    => $scriptLog,
     );
     
