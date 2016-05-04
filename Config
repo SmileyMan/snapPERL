@@ -1,17 +1,23 @@
-# Sub is called to build option hash. Makes it more readable 
+# Sub in snapPERL.pl is called to build option hash. Makes it more readable 
 # (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
+# All white space, empty lines, lines without an = in and lines starting with # are ignored when parsed
 ## Email Options
 emailSend=0                                                   #Send email?
 emailAddress=#########@#######.com                            #Email address
 useGmail=1                                                    #Use Gmail to send mail 
 gmailPass="****************"                                  #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
-                                                              #If not please please please chmod 600 to root on config file.. PLEASE!
-  
+                                                              #If not please please please chmod 600 to root on Config file.. PLEASE! (Don't leave readable on system)
 ## Pushover Options
 pushOverSend=0                                                #Send pushover alerts?
 pushOverKey=################################                  #Pushover user key
 pushOverToken=##############################                  #Pushover app token
 pushOverUrl=https://api.pushover.net/1/messages.json          #Pushover url to send messages
+
+## Notify my Android options
+nmaSend=0                                                     #Send NMA alerts
+
+## Pushbullet options
+pushBulletSend=0                                              #Send pushbullet alerts
   
 ## Sync and Scrub options
 deletedFiles=50                                               #Max amount of deleted files to auto sync
@@ -37,6 +43,6 @@ curlBin=/usr/bin/curl                                         #Curl binary locat
 ## Other Options
 spinDown=0                                                    #Spindown array once script completed?
 pool=0                                                        #Run pool command if valid config option found?
-logFile=/tmp/script-snapRAID.log                              #Logfile location
+logFile=/tmp/script-snapRAID.log                              #Logfile location (If not running as root must be writeable)
 logLevel=4                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
 logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
