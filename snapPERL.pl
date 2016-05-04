@@ -29,6 +29,7 @@ use warnings;
 # Need to load these on demand - No point loading if emailSend set to 0 (Email support work in progress)
 #use MIME::Lite;
 use Module::Load;
+use Encode qw(encode);
 use Email::Send;
 use Email::Send::Gmail;
 use Email::Simple::Creator;
