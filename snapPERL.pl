@@ -483,13 +483,13 @@ sub email_send {
 	
   # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
-    
+
     # Create gmail email
     my $email = Email::Simple->create(
       header => [
         From    => $opt{emailAddress},
         To      => $opt{emailAddress},
-        Subject => "\[$hostname\] - snapPERL Log. Please see message body",
+        Subject => Encode::encode('MIME-header', "\[$hostname\] - snapPERL Log. Please see message body"),
       ],
       body => $scriptLog,
     );
@@ -515,7 +515,7 @@ sub email_send {
     my $msg = MIME::Lite->new(
       From    => $opt{emailAddress},
       To      => $opt{emailAddress},
-      Subject => "\[$hostname\] - snapPERL Log. Please see message body",
+      Subject => Encode::encode('MIME-header', "\[$hostname\] - snapPERL Log. Please see message body"),
       Data    => $scriptLog,
     );
     
