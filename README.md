@@ -82,8 +82,10 @@ distributing this SOFTWARE PRODUCT.
            Add catches for snapraid DANGER! and Warning! messages
            Catch snapraid.exe stderr and action/log it
            Add pushover support and messages
+           Add NMA support
+           Add Pushbullet support
            Add email support and messages
-           Config data read from external file
+           Config data in external file
            Check data and parity disks are present
            Check and confirm conf settings
            Mount and unmount parity
