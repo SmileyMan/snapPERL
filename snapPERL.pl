@@ -43,8 +43,9 @@ my $hostname = qx/hostname/;
 # Remove vertical whitespace from hostname (Email issue)
 chop $hostname; 
 
-my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion, $minLogLevel);
+my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion);
 my (%diffHash, %opt, %conf);
+my $minLogLevel = 5;
 
 #-------- Script Start --------#
 
