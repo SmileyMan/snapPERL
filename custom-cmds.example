@@ -5,7 +5,7 @@
 # post=sudo systemctl start nzbget
 
 # Enter commands in order you want them to run.
-# Comments and white space are ignored!
+# Comments and white space are ignored! - Remove # to run example commands.
 
 #pre=echo Precommand 1
 #pre=echo Precommand 2
