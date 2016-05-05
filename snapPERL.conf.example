@@ -6,24 +6,24 @@
 emailSend=0                                                   #Send email?
 emailAddress=youremail@email.com                              #Email address
 emailSendAddress=youremail@email.com                          #Email address to show has being sent from
-emailUseSmtp=0                                                #Use none sendmail smtp if not using gmail 
-emailSmtpAddress=smtp.yourisp.com                             #SMTP address to use
+emailUseSmtp=0                                                #Use none sendmail or external smtp if not using gmail 
+emailSmtpAddress=smtp.yourisp.com                             #SMTP address to use (Needed if emailUseSmtp set)
 
 ## Gmail settings
 useGmail=0                                                    #Use Gmail to send mail 
 gmailPass=yourgmailpass                                       #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
   
 ## Pushover Options
-pushOverSend=0                                                #Send pushover alerts?
+pushOverSend=0                                                #Send pushover alerts? - Not currently active
 pushOverKey=##############################                    #Pushover user key
 pushOverToken=##############################                  #Pushover app token
 pushOverUrl=https://api.pushover.net/1/messages.json          #Pushover url to send messages
 
 ## Notify my Android options
-nmaSend=0                                                     #Send NMA alerts
+nmaSend=0                                                     #Send NMA alerts - Not currently active
 
 ## Pushbullet options
-pushBulletSend=0                                              #Send pushbullet alerts
+pushBulletSend=0                                              #Send pushbullet alerts - Not currently active
   
 ## Sync and Scrub options
 deletedFiles=50                                               #Max amount of deleted files to auto sync
@@ -32,7 +32,7 @@ scrubDays=7                                                   #Number of days be
 scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
 scrubAge=10                                                   #Data older than days
 scrubPercentage=8                                             #Percentage of array to scrub
-useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in latest versions of snapraid).
+useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
   
 ## Smart options
 smartLog=1                                                    #Check and log Smart data. 
@@ -44,7 +44,7 @@ snapRaidConf=/etc/snapraid.conf                               #Location of snapr
  
 ## Binary locations
 snapRaidBin=/usr/local/bin/snapraid                           #Snapriad binary location
-curlBin=/usr/bin/curl                                         #Curl binary location
+curlBin=/usr/bin/curl                                         #Curl binary location - Not currently used
 
 ## Other Options
 spinDown=0                                                    #Spindown array once script completed?
