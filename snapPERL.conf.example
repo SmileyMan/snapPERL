@@ -1,15 +1,21 @@
 # Sub in snapPERL.pl is called to build option hash. Makes it more readable 
 # (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
 # All white space, empty lines, lines without an = in and lines starting with # are ignored when parsed
+
 ## Email Options
 emailSend=0                                                   #Send email?
-emailAddress=#########@#######.com                            #Email address
-useGmail=1                                                    #Use Gmail to send mail 
-gmailPass="****************"                                  #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
-                                                              #If not please please please chmod 600 to root on Config file.. PLEASE! (Don't leave readable on system)
+emailAddress=youremail@email.com                              #Email address
+emailSendAddress=youremail@email.com                          #Email address to show has being sent from
+emailUseSmtp=0                                                #Use none sendmail smtp if not using gmail 
+emailSmtpAddress=smtp.yourisp.com                             #SMTP address to use
+
+## Gmail settings
+useGmail=0                                                    #Use Gmail to send mail 
+gmailPass=yourgmailpass                                       #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
+  
 ## Pushover Options
 pushOverSend=0                                                #Send pushover alerts?
-pushOverKey=################################                  #Pushover user key
+pushOverKey=##############################                    #Pushover user key
 pushOverToken=##############################                  #Pushover app token
 pushOverUrl=https://api.pushover.net/1/messages.json          #Pushover url to send messages
 
@@ -43,6 +49,7 @@ curlBin=/usr/bin/curl                                         #Curl binary locat
 ## Other Options
 spinDown=0                                                    #Spindown array once script completed?
 pool=0                                                        #Run pool command if valid config option found?
-logFile=/tmp/script-snapRAID.log                              #Logfile location (If not running as root must be writeable)
-logLevel=4                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
+logFile=/tmp/snapPERL.log                                     #Logfile location (If not running as root must be writeable)
+logLevel=3                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
 logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
+useCustomCmds=0                                               #Load custom pre and post commands from custom-cmds file (optional feature)

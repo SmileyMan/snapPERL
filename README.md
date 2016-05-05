@@ -1,4 +1,4 @@
-# snapPERL
+# snapPERL v0.1
 Helper script for snapraid created in PERL
 
 
@@ -36,8 +36,8 @@ Helper script for snapraid created in PERL
 
  9.  If active in $options snapraid down is run and array is spun down. Details are logged.
 
- 10. Log file wrote to disk and any warnings/errors are sent out. This subrutine is also 
-     called if the script aborts so messages are sent and log saved. $option 'logStdout'
+ 10. Log file wrote to disk and any warnings/errors are sent out via email. This subrutine is 
+     also called if the script aborts so messages are sent and log saved. $option 'logStdout'
      will also send the log to the screen as the script runs. Useful for debugging. Turn of
      off when run via a cron job. (Debug info sent to log if 'logLevel >= 5')
 
@@ -59,6 +59,8 @@ Please have a play but expect bugs / things going wrong. This is just a wrapper 
 and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
 (only snapraid.exe manipulates the data)
 
+###__This script does not write or manipulate and Array Data. It is a wrapper for snapraid http://www.snapraid.it/__
+
 #Disclaimer
 
 This SOFTWARE PRODUCT is provided by THE PROVIDER "as is" and "with all faults." 
@@ -76,12 +78,12 @@ distributing this SOFTWARE PRODUCT.
 #Todo
 
            Add catches for snapraid DANGER! and Warning! messages
-           Catch snapraid.exe stderr and action/log it
+           Catch snapraid.exe stderr and action/log it (Is this needed? Maybe just log)
            Add pushover support and messages
            Add NMA support
            Add Pushbullet support
-           Add email support and messages
-           Config data in external file
+           Add email support and messages (Working in v0.1)
+           Config data in external file (Done in V0.1)
            Check data and parity disks are present
            Check and confirm conf settings
            Mount and unmount parity

@@ -1,3 +1,10 @@
+05/05/2016 v0.1
+            Added emailing function for gmail and sendmail.
+            Testing live on my own Array.
+            Added Module::Load to autoload on demand any needed modules.
+            Config file now seperate and named .example - No more config clobber on git pull.
+            Ablity to run custom command both pre and post script.
+            In daily use on my server @ this point.
 
 04/05/2016 Created CHANGELOG file. Renamed conf file. Template for install script.
 03/05/2016 Added email function. Testing to be completed. Various code fixes/changes

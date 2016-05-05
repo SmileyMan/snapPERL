@@ -26,66 +26,26 @@ use strict;
 use warnings;
 
 # Modules
-# Need to load these on demand - No point loading if emailSend set to 0 (Email support work in progress)
-#use MIME::Lite;
-#use Email::Send;
-#use Email::Send::Gmail;
-#use Email::Simple::Creator;
+use Module::Load;           # Perl core module for on demand loading of optional modules
 
-############################## Define User Variables ########################################
-
-# todo: remove and load from external file
-# Sub is called to build option hash. Makes it more readable (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
-my $options = q{
-  
-  ## Email Options
-  emailSend=0                                                   #Send email?
-  emailAddress=#########@#######.com                            #Email address
-  useGmail=1                                                    #Use Gmail to send mail
-  gmailPass="****************"                                  #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
-                                                                #If not please please please chmod 600 to root on config file.. PLEASE!
-  
-  ## Pushover Options
-  pushOverSend=0                                                #Send pushover alerts?
-  pushOverKey=################################                  #Pushover user key
-  pushOverToken=##############################                  #Pushover app token
-  pushOverUrl=https://api.pushover.net/1/messages.json          #Pushover url to send messages
-  
-  ## Sync and Scrub options
-  deletedFiles=50                                               #Max amount of deleted files to auto sync
-  changedFiles=500                                              #Max amount of changed files to auto sync
-  scrubDays=7                                                   #Number of days before scrub is run 
-  scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
-  scrubAge=10                                                   #Data older than days
-  scrubPercentage=8                                             #Percentage of array to scrub
-  useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in latest versions of snapraid).
-  
-  ## Smart options
-  smartLog=1                                                    #Check and log Smart data. 
-  smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings
-  smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
-  
-  ## Snapraid options
-  snapRaidConf=/etc/snapraid.conf                               #Location of snapraid conf file
-  
-  ## Binary locations
-  snapRaidBin=/usr/local/bin/snapraid                           #Snapriad binary location
-  mailBin=/usr/bin/mutt                                         #Email binary location
-  curlBin=/usr/bin/curl                                         #Curl binary location
-  ## Other Options
-  spinDown=0                                                    #Spindown array once script completed?
-  pool=0                                                        #Run pool command if valid config option found?
-  logFile=/tmp/script-snapRAID.log                              #Logfile location
-  logLevel=4                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
-  logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
-};
+our $VERSION = 0.1.0;
 
 ############################## Script only from here ########################################
 
+# Define options file
+my $optionsFile = 'snapPERL.conf';
+
+# Defind custom commands file
+my $customCmdsFile = 'custom-cmds';
+
 # Define Script Varibles
 my $hostname = qx/hostname/;
+# Remove vertical whitespace from hostname (Email issue)
+chop $hostname; 
+
 my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion);
-my (%diffHash, %opt, %conf);
+my (%diffHash, %opt, %conf, %customCmds);
+my $minLogLevel = 5;
 
 #-------- Script Start --------#
 
@@ -93,6 +53,14 @@ my (%diffHash, %opt, %conf);
 get_opt_hash();
 
 logit('Script Started', 3);
+
+# using optional feature 'custom commands'?
+if ( $opt{useCustomCmds} ) {
+	# Load from file 'custom-cmds'
+	load_custom_cmds();
+	# Run pre commands
+	custom_cmds('pre');
+}
 
 # Parse snapraid conf file
 parse_conf();
@@ -141,12 +109,18 @@ if ( $opt{smartLog} ) { snap_smart(); }
 # Spindown?
 if ( $opt{spinDown} ) { snap_spindown(); }
 
+if ( $opt{useCustomCmds} ) {
+    # Run post commands
+    custom_cmds('post');
+}
+
 logit('Script Completed', 3);
 
-# Add debug information to log.
+# Add debug information to log
 if ( $opt{logLevel} >= 5 ) { debug_log(); }
 
-write_log();
+# Log/Email cleanup.
+script_comp();
 
 #-------- Script End --------#
 
@@ -315,8 +289,8 @@ sub snap_scrub {
   if ( $output =~ m/Everything\s+OK/ ) { $success = 1; }
   
   if ( $success ) {
-    # Log details from sync.
-    logit("Snapraid sync completed: $dataProcessed MB processed", 3);
+    # Log details from scrub.
+    logit("Snapraid scrub completed: $dataProcessed MB processed", 3);
   } 
   else {
     # Stop script.
@@ -429,7 +403,7 @@ sub parse_conf {
   # Slurp the conf file :P
   {
     open my $fh, '<', $opt{snapRaidConf} or error_die("Critical error: Unable to open conf file. Please check config");
-    local $/ = undef;   # Don't clober gobal version.
+    local $/ = undef;   # Don't clobber global version.
     $confData = <$fh>;
     close $fh;
   }
@@ -459,10 +433,10 @@ sub parse_conf {
       else { 
         if ( $value =~ /\w+/ ) {
           $conf{$key} = $value; 
-        # Has no value so assign boolen
         } 
+        # Has no value so assign boolean
         else {
-          $conf{$key} = "Yes";
+          $conf{$key} = 1;
         }
       }
     }
@@ -475,6 +449,16 @@ sub parse_conf {
 # Build option hash from $options at start of script;
 # usage get_opt_hash();
 sub get_opt_hash {
+  
+  my $options;
+  
+  # Slurp the options file :P
+  {
+    open my $fh, '<', $optionsFile or error_die("Critical error: Unable to open options file. Does it exist?");
+    local $/ = undef;   # Don't clobber global version.
+    $options = <$fh>;
+    close $fh;
+  }
   
   # Cycle though options and build hash
   foreach ( split /\n/, $options ) {
@@ -506,20 +490,49 @@ sub get_opt_hash {
 }
 
 ##
+# sub script_comp
+# Called at end of script. Basic clean up tasks.
+# usage script_comp();
+sub script_comp {
+ 
+  # Send email if enabled
+  if ( $opt{emailSend} ) { email_send(); }
+  # Write log to location in $opt{logFile}
+  if ( $opt{logFile} ) { write_log(); }
+  
+  return 1;
+}
+
+##
 # sub get_email_send
 # Send the scriptLog out via email;
-# usage get_email_send();
+# usage email_send();
 sub email_send {
 	
+  my $subjectAlert;	
+  
+  # Add alert to subject line if warnings or errors encountered.
+  if ( $minLogLevel < 3 ) { 
+  	$subjectAlert = $minLogLevel < 2 ? 'Critical' : 'Warning';  	
+  }	
+  else {
+  	$subjectAlert = '';
+  }
+  
   # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
-    
-    # Great gmail email
+  	
+  	# Load on demand need modules for Gmail send
+    autoload Email::Send;
+    autoload Email::Send::Gmail;
+    autoload Email::Simple::Creator;
+  	
+    # Create gmail email
     my $email = Email::Simple->create(
       header => [
-        From    => $opt{emailAddress},
+        From    => $opt{emailSendAddress},
         To      => $opt{emailAddress},
-        Subject => "[$hostname] - snapPERL Log. Please see message body",
+        Subject =>  "$subjectAlert \[$hostname\] - snapPERL Log. Please see message body",
       ],
       body => $scriptLog,
     );
@@ -536,22 +549,88 @@ sub email_send {
   
     # Send using gmail SMTP
     eval { $sender->send($email) };
-    #die "Error sending email: $@" if $@;
+    if ( $@ ) { logit("Warning: Gmail SMTP email send failed... $@"); }
   
   }
   else {
  
-    # Send email via localy configured email server. (Not tested yet I don't run local email server)
+    # Load on demand needed modules for Email send
+    autoload MIME::Lite;
+ 
+    # Send email via localy configured sendmail server. 
     my $msg = MIME::Lite->new(
-      From    => $opt{emailAddress},
+      From    => $opt{emailSendAddress},
       To      => $opt{emailAddress},
-      Subject => "[$hostname] - snapPERL Log. Please see message body",
+      Subject => "\[$hostname\] - snapPERL Log. Please see message body",
       Data    => $scriptLog,
     );
     
     # Send.             
-    $msg->send;
-    
+    if ( $opt{emailUseSmtp} ) {
+      $msg->send('smtp', $opt{emailSmtpAddress}, Timeout => 60 );
+    }
+    else {
+      $msg->send;
+    }
+  }
+  return 1;
+}
+
+##
+# sub load_custom_cmds();
+# Loads custom commands from file into hash/array
+# usage load_custom_cmds());
+sub load_custom_cmds {
+
+  my $customCmdsIn;
+  
+  # Slurp the custom commands file :P
+  {
+    open my $fh, '<', $customCmdsFile or error_die("Critical error: Unable to open custom commands file. Does it exist?");
+    local $/ = undef;   # Don't clobber global version.
+    $customCmdsIn = <$fh>;
+    close $fh;
+  }
+	
+  foreach my $line ( split /\n/, $customCmdsIn ) {
+  	# Remove any leading whitespace
+  	$line =~ s/^\s+//g;
+  	
+  	#Ignore comments and empty lines
+  	if ( $line !~ m/^#/ && $line =~ m/=/ ) {
+      #Split on '='
+  	  my ($type, $cmd) = split /=/, $line;
+      # Ignore lines without pre or post commands
+      if ( $type =~ m/pre|post/ ) {
+      	# Add to Hash/Array
+      	$customCmds{$type}->[$#{$customCmds{$type}}+1] = $cmd;
+      }  		
+  	}
+  }
+  return 1;
+}
+
+##
+# sub custom_cmds();
+# Runs custom pre and post commands defined in custom-cmds file.
+# usage custom_cmds('pre|post');
+sub custom_cmds {
+	
+  # Get type of operation
+  my $type = shift;
+  # Check it's valid
+  if ( $type !~ m/pre|post/ ) {
+    logit("Warning: Custom commands called with incorrect option", 2);
+    return;
+  }
+	
+  # Prevent working on undefined hash if no commands loaded
+  if ( defined $customCmds{$type} ) {
+    # For each array element in hash
+    for ( my $i=0; $i <= $#{$customCmds{$type}}; $i++ ) {
+      # Run command
+      system($customCmds{$type}->[$i]);
+    }	   
   }
   return 1;
 }
@@ -584,6 +663,9 @@ sub logit {
   # Get text and loglevel
   my ($logText, $logLevel) = @_;
  
+  # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal 
+  $minLogLevel = $logLevel < $minLogLevel ? $logLevel : $minLogLevel;
+
   # Get current timestamp
   my $timeStamp = time_stamp();
   
@@ -622,6 +704,8 @@ sub write_log {
 # Cycles over multi dimension hash created from config file.
 # usage debug_log();
 sub debug_log {
+  
+  # May just use Data::Dumper for this
   
   # Debug -> Log Options!
   logit('-------- Options --------', 5);
@@ -664,8 +748,8 @@ sub error_die {
   # Log error message
   logit($message, 1);
 
-  # Write log to file
-  write_log();
+  # Cleanup
+  script_comp();
 
   # Kill script
   die;          # Wipe yourself off. You're dead.
