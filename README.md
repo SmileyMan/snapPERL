@@ -1,6 +1,7 @@
 # snapPERL v0.1
 Helper script for snapraid created in PERL
 
+####Note: Wife is 40 weeks pregnant so if I disappear for a couple of weeks it's not abandoned!
 
  Snapraid helper script written in PERL. Enables automation using cron for your Array Syncs
 
