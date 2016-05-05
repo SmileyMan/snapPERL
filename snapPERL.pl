@@ -589,7 +589,7 @@ sub load_custom_cmds {
   	$line =~ s/^\s+//g;
   	
   	#Ignore comments and empty lines
-  	if ( $line =~ !m/^#/ && m/=/ ) {
+  	if ( $line !~ m/^#/ && $line =~ m/=/ ) {
       #Split on '='
   	  my ($type, $cmd) = split /=/, $line;
       # Ignore lines without pre or post commands
