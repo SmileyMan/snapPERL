@@ -85,6 +85,7 @@ distributing this SOFTWARE PRODUCT.
            Check data and parity disks are present
            Check and confirm conf settings
            Mount and unmount parity
+           Custom commands at start and completion of script (rubylaser)
            Go over code and clean
            Drink beer!
 
