@@ -28,11 +28,12 @@ use warnings;
 # Modules
 use Module::Load;           # Perl core module for on demand loading of optional modules
 
+our $VERSION = 0.1.0;
+
 ############################## Script only from here ########################################
 
 # Define options file
-#my $optionsFile = 'snapPERL.conf';         #Default setting
-my $optionsFile = 'snapPERL-Local.conf';    #Using my conf file with my passwords and tokens in for testing
+my $optionsFile = 'snapPERL.conf';
 
 # Defind custom commands file
 my $customCmdsFile = 'custom-cmds';
