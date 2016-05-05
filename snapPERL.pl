@@ -43,7 +43,7 @@ my $hostname = qx/hostname/;
 # Remove vertical whitespace from hostname (Email issue)
 chop $hostname; 
 
-my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion);
+my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion, $minLogLevel);
 my (%diffHash, %opt, %conf);
 
 #-------- Script Start --------#
@@ -476,7 +476,7 @@ sub get_opt_hash {
 }
 
 ##
-# sub get_script_comp
+# sub script_comp
 # Called at end of script. Basic clean up tasks.
 # usage script_comp();
 sub script_comp {
@@ -486,6 +486,7 @@ sub script_comp {
   # Write log to location in $opt{logFile}
   if ( $opt{logFile} ) { write_log(); }
   
+  return 1;
 }
 
 ##
@@ -494,15 +495,25 @@ sub script_comp {
 # usage email_send();
 sub email_send {
 	
+  my $subjectAlert;	
+  
+  # Add alert to subject line if warnings or errors encountered.
+  if ( $minLogLevel < 3 ) { 
+  	$subjectAlert = $minLogLevel < 2 ? 'Critical' : 'Warning';  	
+  }	
+  else {
+  	$subjectAlert = '';
+  }
+  
   # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
 
     # Create gmail email
     my $email = Email::Simple->create(
       header => [
-        From    => $opt{emailAddress},
+        From    => $opt{emailSendAddress},
         To      => $opt{emailAddress},
-        Subject =>  "\[$hostname\] - snapPERL Log. Please see message body",
+        Subject =>  "$subjectAlert \[$hostname\] - snapPERL Log. Please see message body",
       ],
       body => $scriptLog,
     );
@@ -519,22 +530,26 @@ sub email_send {
   
     # Send using gmail SMTP
     eval { $sender->send($email) };
-    #die "Error sending email: $@" if $@;
+    if ( $@ ) { logit("Warning: Gmail SMTP email send failed... $@"); }
   
   }
   else {
  
-    # Send email via localy configured email server. (Not tested yet I don't run local email server)
+    # Send email via localy configured sendmail server. 
     my $msg = MIME::Lite->new(
-      From    => $opt{emailAddress},
+      From    => $opt{emailSendAddress},
       To      => $opt{emailAddress},
       Subject => "\[$hostname\] - snapPERL Log. Please see message body",
       Data    => $scriptLog,
     );
     
     # Send.             
-    $msg->send;
-    
+    if ( $opt{emailUseSmtp} ) {
+      $msg->send('smtp', $opt{emailSmtpAddress}, Timeout => 60 );
+    }
+    else {
+      $msg->send;
+    }
   }
   return 1;
 }
@@ -567,6 +582,9 @@ sub logit {
   # Get text and loglevel
   my ($logText, $logLevel) = @_;
  
+  # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal 
+  $minLogLevel = $logLevel < $minLogLevel ? $logLevel : $minLogLevel;
+
   # Get current timestamp
   my $timeStamp = time_stamp();
   
