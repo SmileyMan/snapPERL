@@ -34,6 +34,9 @@ use Module::Load;           # Perl core module for on demand loading of optional
 #my $optionsFile = 'snapPERL.conf';         #Default setting
 my $optionsFile = 'snapPERL-Local.conf';    #Using my conf file with my passwords and tokens in for testing
 
+# Defind custom commands file
+my $customCmdsFile = 'custom-cmds';
+
 # Define Script Varibles
 my $hostname = qx/hostname/;
 # Remove vertical whitespace from hostname (Email issue)
@@ -572,13 +575,17 @@ sub email_send {
   return 1;
 }
 
+##
+# sub load_custom_cmds();
+# Loads custom commands from file into hash/array
+# usage load_custom_cmds());
 sub load_custom_cmds {
 
   my $customCmdsIn;
   
   # Slurp the custom commands file :P
   {
-    open my $fh, '<', $opt{customCmdsFile} or error_die("Critical error: Unable to open custom commands file. Does it exist?");
+    open my $fh, '<', $customCmdsFile or error_die("Critical error: Unable to open custom commands file. Does it exist?");
     local $/ = undef;   # Don't clobber global version.
     $customCmdsIn = <$fh>;
     close $fh;
@@ -602,6 +609,10 @@ sub load_custom_cmds {
   return 1;
 }
 
+##
+# sub custom_cmds();
+# Runs custom pre and post commands defined in custom-cmds file.
+# usage custom_cmds('pre|post');
 sub custom_cmds {
 	
   # Get type of operation
