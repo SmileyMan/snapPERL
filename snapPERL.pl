@@ -615,7 +615,7 @@ sub custom_cmds {
   # Prevent working on undefined hash if no commands loaded
   if ( defined $customCmds{$type} ) {
     # For each array element in hash
-    for ( my $i=0; $i <= $#{$customCmds{$type}}+1; $i++ ) {
+    for ( my $i=0; $i <= $#{$customCmds{$type}}; $i++ ) {
       # Run command
       system($customCmds{$type}->[$i]);
     }	   
@@ -711,7 +711,7 @@ sub debug_log {
       }
     } 
     elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
-      for ( my $i=0; $i <= $#{$conf{$confKey}}+1; $i++ )  {
+      for ( my $i=0; $i <= $#{$conf{$confKey}}; $i++ )  {
         logit("Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5);
       }
     } 
