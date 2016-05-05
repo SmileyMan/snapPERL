@@ -40,8 +40,8 @@ my $optionsFile = 'snapPERL-Local.conf';
 
 # Define Script Varibles
 my $hostname = qx/hostname/;
-# Remove vertical/leading and trailing whitespace from hostname (Email issue)
-$hostname =~ s/^\s+|\s+$//g;
+# Remove vertical whitespace from hostname (Email issue)
+chop $hostname; 
 
 my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion);
 my (%diffHash, %opt, %conf);
@@ -105,11 +105,8 @@ logit('Script Completed', 3);
 # Add debug information to log
 if ( $opt{logLevel} >= 5 ) { debug_log(); }
 
-# Send email if enabled
-if ( $opt{emailSend} ) { email_send(); }
-
-# Write log to location in $opt{logFile}
-write_log();
+# Log/Email cleanup.
+script_comp();
 
 #-------- Script End --------#
 
@@ -441,7 +438,7 @@ sub get_opt_hash {
   
   my $options;
   
-  # Slurp the conf file :P
+  # Slurp the options file :P
   {
     open my $fh, '<', $optionsFile or error_die("Critical error: Unable to open options file. Does it exist?");
     local $/ = undef;   # Don't clobber global version.
@@ -479,9 +476,22 @@ sub get_opt_hash {
 }
 
 ##
+# sub get_script_comp
+# Called at end of script. Basic clean up tasks.
+# usage script_comp();
+sub script_comp {
+ 
+  # Send email if enabled
+  if ( $opt{emailSend} ) { email_send(); }
+  # Write log to location in $opt{logFile}
+  if ( $opt{logFile} ) { write_log(); }
+  
+}
+
+##
 # sub get_email_send
 # Send the scriptLog out via email;
-# usage get_email_send();
+# usage email_send();
 sub email_send {
 	
   # Use gmail SMTP to send the email.. System I use.
@@ -637,8 +647,8 @@ sub error_die {
   # Log error message
   logit($message, 1);
 
-  # Write log to file
-  write_log();
+  # Cleanup
+  script_comp();
 
   # Kill script
   die;          # Wipe yourself off. You're dead.
