@@ -2,7 +2,7 @@
 Email::Send::Gmail (If using gmail)  ->  command: sudo cpan install Email::Send::Gmail
 MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
 
-# This script does not write or manipulate and Array data. It is a wrapper for snapraid http://www.snapraid.it/
+# This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
 
 # Install
 
