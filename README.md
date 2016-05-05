@@ -41,6 +41,8 @@ Helper script for snapraid created in PERL
      will also send the log to the screen as the script runs. Useful for debugging. Turn of
      off when run via a cron job. (Debug info sent to log if 'logLevel >= 5')
 
+11.  Runs custom commands before and after script runs from custom-cmds file. See example for syntax
+
 
 
 #Created by Steve Miles (SmileyMan). 
@@ -83,11 +85,11 @@ distributing this SOFTWARE PRODUCT.
            Add NMA support
            Add Pushbullet support
            Add email support and messages (Working in v0.1)
-           Config data in external file (Done in V0.1)
+           Config data in external file (Done in v0.1)
            Check data and parity disks are present
            Check and confirm conf settings
            Mount and unmount parity
-           Custom commands at start and completion of script (rubylaser)
+           Custom commands at start and completion of script (rubylaser) (Done in v0.1)
            Go over code and clean
            Drink beer!
 
