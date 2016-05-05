@@ -91,5 +91,5 @@ distributing this SOFTWARE PRODUCT.
            Mount and unmount parity
            Custom commands at start and completion of script (rubylaser) (Done in v0.1)
            Go over code and clean
-           Drink beer!
+           Drink beer! (Need some now)
 
