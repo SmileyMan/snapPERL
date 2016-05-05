@@ -6,5 +6,5 @@
 
 # Enter commands in order you want them to run.
 
-#pre=echo Precommand
-#post=echo Postcommand
+pre=echo Precommand
+post=echo Postcommand
