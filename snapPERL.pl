@@ -40,7 +40,7 @@ my $hostname = qx/hostname/;
 chop $hostname; 
 
 my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion);
-my (%diffHash, %opt, %conf);
+my (%diffHash, %opt, %conf, %customCmds);
 my $minLogLevel = 5;
 
 #-------- Script Start --------#
@@ -49,6 +49,14 @@ my $minLogLevel = 5;
 get_opt_hash();
 
 logit('Script Started', 3);
+
+# using optional feature 'custom commands'?
+if ( $opt{useCustomCmds} ) {
+	# Load from file 'custom-cmds'
+	load_custom_cmds();
+	# Run pre commands
+	custom_cmds('pre');
+}
 
 # Parse snapraid conf file
 parse_conf();
@@ -96,6 +104,11 @@ if ( $opt{smartLog} ) { snap_smart(); }
 
 # Spindown?
 if ( $opt{spinDown} ) { snap_spindown(); }
+
+if ( $opt{useCustomCmds} ) {
+    # Run post commands
+    custom_cmds('post');
+}
 
 logit('Script Completed', 3);
 
@@ -506,7 +519,7 @@ sub email_send {
   if ( $opt{useGmail} ) {
   	
   	# Load on demand need modules for Gmail send
-  	autoload Email::Send;
+    autoload Email::Send;
     autoload Email::Send::Gmail;
     autoload Email::Simple::Creator;
   	
@@ -555,6 +568,57 @@ sub email_send {
     else {
       $msg->send;
     }
+  }
+  return 1;
+}
+
+sub load_custom_cmds {
+
+  my $customCmdsIn;
+  
+  # Slurp the custom commands file :P
+  {
+    open my $fh, '<', $opt{customCmdsFile} or error_die("Critical error: Unable to open custom commands file. Does it exist?");
+    local $/ = undef;   # Don't clobber global version.
+    $customCmdsIn = <$fh>;
+    close $fh;
+  }
+	
+  foreach my $line ( split /\n/, $customCmdsIn ) {
+  	# Remove any leading whitespace
+  	$line =~ s/^\s+//g;
+  	
+  	#Ignore comments and empty lines
+  	if ( $line =~ !m/^#/ && m/=/ ) {
+      #Split on '='
+  	  my ($type, $cmd) = split /=/, $line;
+      # Ignore lines without pre or post commands
+      if ( $type =~ m/pre|post/ ) {
+      	# Add to Hash/Array
+      	$customCmds{$type}->[$#{$customCmds{$type}}+1] = $cmd;
+      }  		
+  	}
+  }
+  return 1;
+}
+
+sub custom_cmds {
+	
+  # Get type of operation
+  my $type = shift;
+  # Check it's valid
+  if ( $type !~ m/pre|post/ ) {
+    logit("Warning: Custom commands called with incorrect option", 2);
+    return;
+  }
+	
+  # Prevent working on undefined hash if no commands loaded
+  if ( defined $customCmds{$type} ) {
+    # For each array element in hash
+    for ( my $i=0; $i <= $#{$customCmds{$type}}+1; $i++ ) {
+      # Run command
+      system($customCmds{$type}->[$i]);
+    }	   
   }
   return 1;
 }
@@ -647,7 +711,7 @@ sub debug_log {
       }
     } 
     elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
-      for ( my $i=0; $i <= $#{$conf{$confKey}}; $i++ )  {
+      for ( my $i=0; $i <= $#{$conf{$confKey}}+1; $i++ )  {
         logit("Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5);
       }
     } 
