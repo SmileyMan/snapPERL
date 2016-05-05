@@ -1,0 +1,8 @@
+# Custom commands to run before script starts and after script completion 
+# pre commands run before script starts. example:
+# pre => sudo systemctl stop nzbget
+# post commands run after script completes. example:
+# post => sudo systemctl start nzbget
+
+#pre => echo Precommand
+#post => echo Postcommand
