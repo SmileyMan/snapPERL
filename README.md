@@ -41,7 +41,7 @@ Helper script for snapraid created in PERL
      will also send the log to the screen as the script runs. Useful for debugging. Turn of
      off when run via a cron job. (Debug info sent to log if 'logLevel >= 5')
 
-11.  Runs custom commands before and after script runs from custom-cmds file. See example for syntax
+ 11. Runs custom commands before and after script runs from custom-cmds file. See example for syntax
 
 
 
