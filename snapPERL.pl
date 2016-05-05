@@ -26,17 +26,13 @@ use strict;
 use warnings;
 
 # Modules
-# Need to load these on demand - No point loading if emailSend set to 0 (Email support work in progress)
-#use MIME::Lite;
-use Module::Load;
-use Email::Send;
-use Email::Send::Gmail;
-use Email::Simple::Creator;
+use Module::Load;           # Perl core module for on demand loading of optional modules
 
 ############################## Script only from here ########################################
 
 # Define options file
-my $optionsFile = 'snapPERL-Local.conf';
+#my $optionsFile = 'snapPERL.conf';         #Default setting
+my $optionsFile = 'snapPERL-Local.conf';    #Using my conf file with my passwords and tokens in for testing
 
 # Define Script Varibles
 my $hostname = qx/hostname/;
@@ -276,8 +272,8 @@ sub snap_scrub {
   if ( $output =~ m/Everything\s+OK/ ) { $success = 1; }
   
   if ( $success ) {
-    # Log details from sync.
-    logit("Snapraid sync completed: $dataProcessed MB processed", 3);
+    # Log details from scrub.
+    logit("Snapraid scrub completed: $dataProcessed MB processed", 3);
   } 
   else {
     # Stop script.
@@ -508,7 +504,12 @@ sub email_send {
   
   # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
-
+  	
+  	# Load on demand need modules for Gmail send
+  	autoload Email::Send;
+    autoload Email::Send::Gmail;
+    autoload Email::Simple::Creator;
+  	
     # Create gmail email
     my $email = Email::Simple->create(
       header => [
@@ -535,6 +536,9 @@ sub email_send {
   
   }
   else {
+ 
+    # Load on demand needed modules for Email send
+    autoload MIME::Lite;
  
     # Send email via localy configured sendmail server. 
     my $msg = MIME::Lite->new(
@@ -624,6 +628,8 @@ sub write_log {
 # Cycles over multi dimension hash created from config file.
 # usage debug_log();
 sub debug_log {
+  
+  # May just use Data::Dumper for this
   
   # Debug -> Log Options!
   logit('-------- Options --------', 5);
