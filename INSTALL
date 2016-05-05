@@ -17,3 +17,7 @@ MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
 7. ./snapPERL.pl to run
 8. You can of course run as a root crontab. Be happy it does what you need first.
 
+# Update
+
+in snapPERL location on drive type 'git pull'
+
