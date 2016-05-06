@@ -400,13 +400,14 @@ sub snap_run {
   my $stdoutFile = "$opt{snapRaidTmpLocation}/snapPERLcmd-stdout.tmp";
   
   # Build command
-  my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$stdoutFile", "2>$stderrFile");
+  #my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$stdoutFile", "2>$stderrFile");
+  my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $options $command 1>$stdoutFile 2>$stderrFile";
   
   # Log command to be run
-  logit("Running: @snapCmd", 4);
+  logit("Running: $snapCmd", 4);
   
   # Run command
-  my $exitCode = system(@snapCmd);
+  my $exitCode = system($snapCmd);
   
   my $cmdStderr = slurp_file($stderrFile);
   my $cmdStdout = slurp_file($stdoutFile);
