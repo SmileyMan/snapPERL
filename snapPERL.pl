@@ -15,8 +15,6 @@
 #
 #############################################################################################
 
-##### Critical: Touch command only added in snapraid 10.0 - Needs a check on version being used #####
-
 package snapPERL;
 
 # Pragmas 
@@ -179,6 +177,10 @@ sub snap_diff {
 # Calls snapraid status and does a few checks. Sets days since last scrub. Corrects sub second timestamps when detected.
 # usage snap_status();
 sub snap_status {
+ 
+  # Get snapraid version
+  $output = snap_run('snapraid --version');
+  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
   
   # Run snapraid status
   my $output = snap_run('status');
@@ -188,34 +190,38 @@ sub snap_status {
   
   # Critical error. Sync currently in progress.
   if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); };
-  
+ 
   # Check for sub-second timestamps and correct.
   if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
-    # Run snapraid touch
-    my $touch = snap_run('touch');
-    foreach ( split /\n/, $touch ) {
-      # Log files where time stamps where changed.
-      if ( m/touch/ ) { 
-      	# Remove word 'touch' before logging
-      	s/touch\s//;
-      	logit("Sub-second timestamp reset on :- $_", 4); 
+    # Grab match so I don't clobber it later with new code
+    my $timeStamps = $1;
+    # Reset enabled in config and snapraid supports?
+    if ( $opt{resetTimeStamps} && snapVersion >= 10.0 ) {
+      # Run snapraid touch
+      my $touch = snap_run('touch');
+      foreach ( split /\n/, $touch ) {
+        # Log files where time stamps where changed.
+        if ( m/touch/ ) { 
+           # Remove word 'touch' before logging
+            s/touch\s//;
+          logit("Sub-second timestamp reset on :- $_", 4); 
+        }
       }
+      logit("$timeStamps files with sub-second timestamps, Snapraid touch command was run", 3);
+    } 
+    else {
+      logit("$timeStamps files with sub-second timestamps, No action taken", 3);
     }
-    logit("$1 files with sub-second timestamps, Snapraid touch command was run", 3);
   } 
   else {
     logit('No sub-second timestamps detected', 3);
-  };
+  }
   
   # Get number of days since last scrub
   ($scrubNew) = $output =~ m/the\s+newest\s+(\d+)./;
   
   # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
   ($scrubOld) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
-  
-  # Get snapraid version
-  $output = snap_run('snapraid --version');
-  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
 
   return 1;
 }
