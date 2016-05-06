@@ -33,6 +33,7 @@ scrubOldest=30                                                #Max oldest block 
 scrubAge=10                                                   #Data older than days
 scrubPercentage=8                                             #Percentage of array to scrub
 useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
+resetTimeStamps=1                                             #Use touch command to reset sub-second time stamps (Snapraid 10.0+)
   
 ## Smart options
 smartLog=1                                                    #Check and log Smart data. 
