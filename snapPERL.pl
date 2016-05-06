@@ -401,7 +401,7 @@ sub snap_run {
   
   # Build command
   #my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$stdoutFile", "2>$stderrFile");
-  my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $options $command 1>$stdoutFile 2>$stderrFile";
+  my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $options $command 1\>$stdoutFile 2\>$stderrFile";
   
   # Log command to be run
   logit("Running: $snapCmd", 4);
@@ -414,8 +414,8 @@ sub snap_run {
   #unlink($stderrFile);
   #unlink($stdoutFile);
   
-  # Anything but 0 indicates and error
-  if ( $exitCode ) {
+  # stnderr file is NOT empty
+  if ( (stat $cmdStderr)[7]!=0 ) {
     error_die("Critical error: Snapraid reports errors. Please check snapraid stderr file:- $opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp");
   }
   # Pass stdout back to caller
