@@ -39,6 +39,7 @@ resetTimeStamps=1                                             #Use touch command
 smartLog=1                                                    #Check and log Smart data. 
 smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings
 smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
+smartMaxDriveTemp=50                                          #Max temp before warnings issued
  
 ## Snapraid options
 snapRaidConf=/etc/snapraid.conf                               #Location of snapraid conf file
