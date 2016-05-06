@@ -1,4 +1,4 @@
-# snapPERL v0.1
+# snapPERL v0.2
 Helper script for snapraid created in PERL
 
 ####Note: Wife is 40 weeks pregnant so if I disappear for a couple of weeks it's not abandoned!
@@ -61,6 +61,8 @@ I worked with PERL and now remember why I loved it. Did not get on with BASH syn
 Please have a play but expect bugs / things going wrong. This is just a wrapper for snapraid.exe
 and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
 (only snapraid.exe manipulates the data)
+
+####Script passes Perl::Critic - Severity: Stern
 
 ###__This script does not write or manipulate and Array Data. It is a wrapper for snapraid http://www.snapraid.it/__
 
