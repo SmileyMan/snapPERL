@@ -42,6 +42,7 @@ smartDiskWarn=50                                              #Chance of fail pe
  
 ## Snapraid options
 snapRaidConf=/etc/snapraid.conf                               #Location of snapraid conf file
+snapRaidTmpLocation=/tmp                                      #Location of tmp file holding snapraid stdout and stderr
  
 ## Binary locations
 snapRaidBin=/usr/local/bin/snapraid                           #Snapriad binary location

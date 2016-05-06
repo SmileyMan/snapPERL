@@ -23,14 +23,15 @@ use strict;
 use warnings;
 
 # Modules
+use Carp;
 use Module::Load;           # Perl core module for on demand loading of optional modules
 use File::Spec;           
 
-our $VERSION = 0.1.0;
+our $VERSION = 0.2.0;
 
 ############################## Script only from here ########################################
 
-# Get script absolute location
+# Get script absolute location 
 my $absLocation = File::Spec->rel2abs( __FILE__ );
 my ($scriptPath, $ScriptName) = $absLocation =~ m/(.+[\/\\])(.+)$/;
 
@@ -58,10 +59,10 @@ logit('Script Started', 3);
 
 # using optional feature 'custom commands'?
 if ( $opt{useCustomCmds} ) {
-	# Load from file 'custom-cmds'
-	load_custom_cmds();
-	# Run pre commands
-	custom_cmds('pre');
+  # Load from file 'custom-cmds'
+  load_custom_cmds();
+  # Run pre commands
+  custom_cmds('pre');
 }
 
 # Parse snapraid conf file
@@ -130,6 +131,60 @@ script_comp();
 #-------- Subroutines --------#
 
 ##
+# sub snap_status()
+# Calls snapraid status and does a few checks. Sets days since last scrub. Corrects sub second timestamps when detected.
+# usage snap_status();
+sub snap_status {
+ 
+  # Get snapraid version
+  my $output = snap_run('snapraid --version');
+  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
+  
+  # Run snapraid status
+  $output = snap_run('status');
+  
+  # Critical error. Status shows errors detected.
+  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected"); };
+  
+  # Critical error. Sync currently in progress.
+  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); };
+ 
+  # Check for zero sub-second timestamps and correct.
+  if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
+    # Grab match so I don't clobber it later with new code
+    my $timeStamps = $1;
+    # Reset enabled in config and snapraid supports?
+    if ( $opt{resetTimeStamps} && $snapVersion >= 10.0 ) {
+      # Run snapraid touch
+      my $touch = snap_run('touch');
+      foreach ( split /\n/, $touch ) {
+        # Log files where time stamps where changed.
+        if ( m/touch/ ) { 
+          # Remove word 'touch' before logging
+          s/touch\s//;
+          logit("Zero sub-second timestamp reset on :- $_", 4); 
+        }
+      }
+      logit("$timeStamps files with zero sub-second timestamps, Snapraid touch command was run", 3);
+    } 
+    else {
+      logit("$timeStamps files with zero sub-second timestamps, No action taken", 3);
+    }
+  } 
+  else {
+    logit('No zero sub-second timestamps detected', 3);
+  }
+  
+  # Get number of days since last scrub
+  ($scrubNew) = $output =~ m/the\s+newest\s+(\d+)./;
+  
+  # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
+  ($scrubOld) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
+
+  return 1;
+}
+
+##
 # sub snap_diff();
 # Runs diff command and scrapes values into a hash and sets 'sync' value to true if differences detected.
 # usage snap_diff();
@@ -172,59 +227,6 @@ sub snap_diff {
   return 1;
 }
 
-##
-# sub snap_status()
-# Calls snapraid status and does a few checks. Sets days since last scrub. Corrects sub second timestamps when detected.
-# usage snap_status();
-sub snap_status {
- 
-  # Get snapraid version
-  $output = snap_run('snapraid --version');
-  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
-  
-  # Run snapraid status
-  my $output = snap_run('status');
-  
-  # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected"); };
-  
-  # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); };
- 
-  # Check for sub-second timestamps and correct.
-  if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
-    # Grab match so I don't clobber it later with new code
-    my $timeStamps = $1;
-    # Reset enabled in config and snapraid supports?
-    if ( $opt{resetTimeStamps} && snapVersion >= 10.0 ) {
-      # Run snapraid touch
-      my $touch = snap_run('touch');
-      foreach ( split /\n/, $touch ) {
-        # Log files where time stamps where changed.
-        if ( m/touch/ ) { 
-           # Remove word 'touch' before logging
-            s/touch\s//;
-          logit("Sub-second timestamp reset on :- $_", 4); 
-        }
-      }
-      logit("$timeStamps files with sub-second timestamps, Snapraid touch command was run", 3);
-    } 
-    else {
-      logit("$timeStamps files with sub-second timestamps, No action taken", 3);
-    }
-  } 
-  else {
-    logit('No sub-second timestamps detected', 3);
-  }
-  
-  # Get number of days since last scrub
-  ($scrubNew) = $output =~ m/the\s+newest\s+(\d+)./;
-  
-  # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
-  ($scrubOld) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
-
-  return 1;
-}
 
 ##
 # sub snap_sync
@@ -392,13 +394,30 @@ sub snap_pool {
 # usage snap_run(options, command);
 sub snap_run {
 
-  my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @_";
-  logit("Running snapraid command: $snapCmd", 4);
+  # Get passed args
+  my ($options, $command) = @_;
   
-  # Run command and return output to caller.
-  # Todo: Try catch to be implemented...
-  return qx/$snapCmd/;
-
+  # Build command
+  my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$opt{snapRaidTmpLocation}/snapPERLcmd-stdout.tmp", "2>$opt{snapRaidTmpLocation}/tmp/snapPERLcmd-stderr.tmp");
+  
+  # Log command to be run
+  logit("Running: qq(@snapCmd)", 4);
+  
+  # Run command
+  my $exitCode = system(qq(@snapCmd));
+  
+  # Anything but 0 indicates and error
+  if ( $exitCode ) {
+    my $cmdStdout = slurp_file('/tmp/snapPERLcmd-stderr.tmp');
+    error_die("Critical error: Snapraid reports errors. Please check snapraid stderr file:- $opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp");
+  }
+  # Pass stdout back to caller
+  else {
+    my $cmdStdout = slurp_file('/tmp/snapPERLcmd-stdout.tmp');
+    return $cmdStdout;
+  }
+  
+  return 1;
 }
 
 ##
@@ -661,7 +680,7 @@ sub slurp_file {
 
   # File exists?
   if ( -e $file ) {
-    open my $fh, '<', $file or error_die("Critical error: Unable to open custom commands file. Does it exist?");
+    open my $fh, '<', $file or error_die("Critical error: Unable to open $file.");
     local $/ = undef;   # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
     $slushPuppie = <$fh>; # My favorite slurp
     close $fh; # Will auto close once once out of scope regardless

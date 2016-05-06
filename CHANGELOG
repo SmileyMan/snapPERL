@@ -1,5 +1,7 @@
 ##/##/#### v0.2
-			File slurping moved to dedicated function
+            File slurping moved to dedicated function
+			Added option to turn auto touch off
+			Remove issue where touch would run on snapraid versions below 10.0
 
 05/05/2016 v0.1
             Added emailing function for gmail and sendmail.
