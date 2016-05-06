@@ -82,17 +82,19 @@ distributing this SOFTWARE PRODUCT.
 
 #Todo
 
-           Add catches for snapraid DANGER! and Warning! messages
+           Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
            Catch snapraid.exe stderr and action/log it (Done in v0.2)
-           Add pushover support and messages
-           Add NMA support
-           Add Pushbullet support
+           Add pushover support and messages (Plan v0.2)
+           Add NMA support (Plan v0.4)
+           Add Pushbullet support (Plan v0.4)
            Add email support and messages (Working in v0.1)
            Config data in external file (Done in v0.1)
-           Check data and parity disks are present
-           Check and confirm conf settings
-           Mount and unmount parity
+           Warn for high disk temp (Plan v0.2)
+           Warn for logged errors on disk (Plan v0.2)
+           Check data and parity disks are present (Plan v0.3)
+           Check and confirm conf settings (Plan v0.3)
+           Mount and unmount parity (Plan v0.4)
            Custom commands at start and completion of script (rubylaser) (Done in v0.1)
-           Go over code and clean
-           Drink beer! (Need some now)
+           Go over code and clean (Ongoing)
+           Drink beer! (Ongoing)
 
