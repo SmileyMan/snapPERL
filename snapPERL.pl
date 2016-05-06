@@ -406,12 +406,12 @@ sub snap_run {
   logit("Running: @snapCmd", 4);
   
   # Run command
-  my $exitCode = system(qq(@snapCmd));
+  my $exitCode = system(@snapCmd);
   
-  my $cmdStderr = slurp_file('$stderrFile');
-  my $cmdStdout = slurp_file('$stdoutFile');
-  unlink($stderrFile);
-  unlink($stdoutFile);
+  my $cmdStderr = slurp_file($stderrFile);
+  my $cmdStdout = slurp_file($stdoutFile);
+  #unlink($stderrFile);
+  #unlink($stdoutFile);
   
   # Anything but 0 indicates and error
   if ( $exitCode ) {
@@ -680,6 +680,7 @@ sub slurp_file {
 	
   # Get file to slurp
   my $file = shift;
+  logit("Slurp file:- $file", 5);
   # mmm Slurp
   my $slushPuppie; 
 
