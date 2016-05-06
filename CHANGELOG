@@ -1,3 +1,6 @@
+##/##/#### v0.2
+			File slurping moved to dedicated function
+
 05/05/2016 v0.1
             Added emailing function for gmail and sendmail.
             Testing live on my own Array.

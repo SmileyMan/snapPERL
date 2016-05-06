@@ -10,9 +10,6 @@
 #############################################################################################
 # Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
 #
-# Based on a bash script http://zackreed.me/articles/83-updated-snapraid-sync-script by 
-# Zack Read (http://zackreed.me) - Extended and converted to PERL
-#
 # Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
 # I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
 #
@@ -39,7 +36,7 @@ my $optionsFile = 'snapPERL.conf';
 my $customCmdsFile = 'custom-cmds';
 
 # Define Script Varibles
-my $hostname = qx/hostname/;
+my $hostname = qx{hostname};
 # Remove vertical whitespace from hostname (Email issue)
 chop $hostname; 
 
@@ -401,12 +398,13 @@ sub parse_conf {
   my $confData;
   
   # Slurp the conf file :P
-  {
-    open my $fh, '<', $opt{snapRaidConf} or error_die("Critical error: Unable to open conf file. Please check config");
-    local $/ = undef;   # Don't clobber global version.
-    $confData = <$fh>;
-    close $fh;
-  }
+  $confData = slurp_file($opt{snapRaidConf});
+  #{
+  #  open my $fh, '<', $opt{snapRaidConf} or error_die("Critical error: Unable to open conf file. Please check config");
+  #  local $/ = undef;   # Don't clobber global version.
+  #  $confData = <$fh>;
+  #  close $fh;
+  #}
 
   # Process slurped conf file.
   foreach ( split /\n/, $confData ) {
@@ -453,12 +451,13 @@ sub get_opt_hash {
   my $options;
   
   # Slurp the options file :P
-  {
-    open my $fh, '<', $optionsFile or error_die("Critical error: Unable to open options file. Does it exist?");
-    local $/ = undef;   # Don't clobber global version.
-    $options = <$fh>;
-    close $fh;
-  }
+  $options = slurp_file($optionsFile);
+  #{
+  #  open my $fh, '<', $optionsFile or error_die("Critical error: Unable to open options file. Does it exist?");
+  #  local $/ = undef;   # Don't clobber global version.
+  #  $options = <$fh>;
+  #  close $fh;
+  #}
   
   # Cycle though options and build hash
   foreach ( split /\n/, $options ) {
@@ -504,7 +503,7 @@ sub script_comp {
 }
 
 ##
-# sub get_email_send
+# sub email_send
 # Send the scriptLog out via email;
 # usage email_send();
 sub email_send {
@@ -585,12 +584,13 @@ sub load_custom_cmds {
   my $customCmdsIn;
   
   # Slurp the custom commands file :P
-  {
-    open my $fh, '<', $customCmdsFile or error_die("Critical error: Unable to open custom commands file. Does it exist?");
-    local $/ = undef;   # Don't clobber global version.
-    $customCmdsIn = <$fh>;
-    close $fh;
-  }
+  $customCmdsIn = slurp_file($customCmdsFile);
+  #{
+  #  open my $fh, '<', $customCmdsFile or error_die("Critical error: Unable to open custom commands file. Does it exist?");
+  #  local $/ = undef;   # Don't clobber global version.
+  #  $customCmdsIn = <$fh>;
+  #  close $fh;
+  #}
 	
   foreach my $line ( split /\n/, $customCmdsIn ) {
     # Remove any leading whitespace
@@ -633,6 +633,32 @@ sub custom_cmds {
     }	   
   }
   return 1;
+}
+
+##
+# sub slurp_file();
+# Slurp the contents of a file and return a scalar
+# usage $contents = slurp_file(filename);
+sub slurp_file {
+	
+  # Get file to slurp
+  my $file = shift;
+  # mmm Slurp
+  my $slushPuppie; 
+
+  # File exists?
+  if ( -e $file ) {
+    open my $fh, '<', $file or error_die("Critical error: Unable to open custom commands file. Does it exist?");
+    local $/ = undef;   # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
+    $slushPuppie = <$fh>; # My favorite slurp
+    close $fh; # Will auto close once once out of scope regardless
+  }
+  else {
+  	# File don't exist
+    logit("Warning: call to slurp_file() with none existing file: $file")
+  }
+  # Return the Slurpie
+  return $slushPuppie;
 }
 
 ##
