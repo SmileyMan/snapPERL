@@ -398,13 +398,13 @@ sub snap_run {
   my ($options, $command) = @_;
   
   # Build command
-  my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$opt{snapRaidTmpLocation}/snapPERLcmd-stdout.tmp", "2>$opt{snapRaidTmpLocation}/tmp/snapPERLcmd-stderr.tmp");
+  my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$opt{snapRaidTmpLocation}/snapPERLcmd-stdout.tmp", "2>$opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp");
   
   # Log command to be run
   logit("Running: qq(@snapCmd)", 4);
   
   # Run command
-  my $exitCode = system(qq(@snapCmd));
+  my $exitCode = system(qw(@snapCmd));
   
   # Anything but 0 indicates and error
   if ( $exitCode ) {
