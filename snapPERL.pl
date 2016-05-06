@@ -110,8 +110,8 @@ if ( $opt{smartLog} ) { snap_smart(); }
 if ( $opt{spinDown} ) { snap_spindown(); }
 
 if ( $opt{useCustomCmds} ) {
-    # Run post commands
-    custom_cmds('post');
+  # Run post commands
+  custom_cmds('post');
 }
 
 logit('Script Completed', 3);
@@ -522,7 +522,7 @@ sub email_send {
   # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
   	
-  	# Load on demand need modules for Gmail send
+    # Load on demand need modules for Gmail send
     autoload Email::Send;
     autoload Email::Send::Gmail;
     autoload Email::Simple::Creator;
@@ -593,19 +593,19 @@ sub load_custom_cmds {
   }
 	
   foreach my $line ( split /\n/, $customCmdsIn ) {
-  	# Remove any leading whitespace
-  	$line =~ s/^\s+//g;
+    # Remove any leading whitespace
+    $line =~ s/^\s+//g;
   	
-  	#Ignore comments and empty lines
-  	if ( $line !~ m/^#/ && $line =~ m/=/ ) {
+    #Ignore comments and empty lines
+    if ( $line !~ m/^#/ && $line =~ m/=/ ) {
       #Split on '='
-  	  my ($type, $cmd) = split /=/, $line;
+      my ($type, $cmd) = split /=/, $line;
       # Ignore lines without pre or post commands
       if ( $type =~ m/pre|post/ ) {
       	# Add to Hash/Array
       	$customCmds{$type}->[$#{$customCmds{$type}}+1] = $cmd;
       }  		
-  	}
+    }
   }
   return 1;
 }
@@ -615,7 +615,7 @@ sub load_custom_cmds {
 # Runs custom pre and post commands defined in custom-cmds file.
 # usage custom_cmds('pre|post');
 sub custom_cmds {
-	
+	  
   # Get type of operation
   my $type = shift;
   # Check it's valid

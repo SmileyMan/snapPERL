@@ -3,7 +3,7 @@
             Testing live on my own Array.
             Added Module::Load to autoload on demand any needed modules.
             Config file now seperate and named .example - No more config clobber on git pull.
-            Ablity to run custom command both pre and post script.
+            Ablity to run custom command both pre and post script. See custom-cmds.example.
             In daily use on my server @ this point.
 
 04/05/2016 Created CHANGELOG file. Renamed conf file. Template for install script.
