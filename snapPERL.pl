@@ -26,16 +26,21 @@ use warnings;
 
 # Modules
 use Module::Load;           # Perl core module for on demand loading of optional modules
+use File::Spec;           
 
 our $VERSION = 0.1.0;
 
 ############################## Script only from here ########################################
 
+# Get script absolute location
+my $absLocation = File::Spec->rel2abs( __FILE__ );
+my ($scriptPath, $ScriptName) = $absLocation =~ m/(.+[\/\\])(.+)$/;
+
 # Define options file
-my $optionsFile = 'snapPERL.conf';
+my $optionsFile = $scriptPath . 'snapPERL.conf';
 
 # Defind custom commands file
-my $customCmdsFile = 'custom-cmds';
+my $customCmdsFile = $scriptPath . 'custom-cmds';
 
 # Define Script Varibles
 my $hostname = qx{hostname};
