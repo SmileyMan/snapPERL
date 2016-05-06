@@ -15,6 +15,8 @@
 #
 #############################################################################################
 
+##### Critical: Touch command only added in snapraid 10.0 - Needs a check on version being used #####
+
 package snapPERL;
 
 # Pragmas 
