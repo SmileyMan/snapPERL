@@ -396,24 +396,29 @@ sub snap_run {
 
   # Get passed args
   my ($options, $command) = @_;
+  my $stderrFile = "$opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp";
+  my $stdoutFile = "$opt{snapRaidTmpLocation}/snapPERLcmd-stdout.tmp";
   
   # Build command
-  my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$opt{snapRaidTmpLocation}/snapPERLcmd-stdout.tmp", "2>$opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp");
+  my @snapCmd = ($opt{snapRaidBin}, "-c",  $opt{snapRaidConf}, "-v", $options,  $command, "1>$stdoutFile", "2>$stderrFile");
   
   # Log command to be run
-  logit("Running: qq(@snapCmd)", 4);
+  logit("Running: @snapCmd", 4);
   
   # Run command
-  my $exitCode = system(qw(@snapCmd));
+  my $exitCode = system(qq(@snapCmd));
+  
+  my $cmdStderr = slurp_file('$stderrFile');
+  my $cmdStdout = slurp_file('$stdoutFile');
+  unlink($stderrFile);
+  unlink($stdoutFile);
   
   # Anything but 0 indicates and error
   if ( $exitCode ) {
-    my $cmdStdout = slurp_file('/tmp/snapPERLcmd-stderr.tmp');
     error_die("Critical error: Snapraid reports errors. Please check snapraid stderr file:- $opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp");
   }
   # Pass stdout back to caller
   else {
-    my $cmdStdout = slurp_file('/tmp/snapPERLcmd-stdout.tmp');
     return $cmdStdout;
   }
   
