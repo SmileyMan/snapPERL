@@ -81,7 +81,7 @@ distributing this SOFTWARE PRODUCT.
 #Todo
 
            Add catches for snapraid DANGER! and Warning! messages
-           Catch snapraid.exe stderr and action/log it (Is this needed? Maybe just log)
+           Catch snapraid.exe stderr and action/log it (Done in v0.2)
            Add pushover support and messages
            Add NMA support
            Add Pushbullet support
