@@ -1,10 +1,13 @@
 ##/##/#### v0.2
+            Fixed Critical Issue: Unable to load config file whan called outside working directory
             File slurping moved to dedicated function
             Added option to turn auto touch off
             Remove issue where touch would run on snapraid versions below 10.0
             Function snap_run now collects stderr/exitcode as well as stdout
             Script will abort if snapraid has wrote to stderr asking for user intervention
             Script will not continue when snapraid is carp'ing errors
+            Warnings for disk temp based on setting in snapPERL.conf
+            Warnings for disk errors based on setting in snapPERL.conf
 
 05/05/2016 v0.1
             Added emailing function for gmail and sendmail.

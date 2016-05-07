@@ -40,6 +40,7 @@ smartLog=1                                                    #Check and log Sma
 smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings
 smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
 smartMaxDriveTemp=50                                          #Max temp before warnings issued
+smartDiskErrorsWarn=1                                         #Number of errors to send warning regarding disk (Normal setting is 1)
  
 ## Snapraid options
 snapRaidConf=/etc/snapraid.conf                               #Location of snapraid conf file
