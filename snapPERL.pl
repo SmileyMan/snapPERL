@@ -661,7 +661,7 @@ sub send_message {
     };
 
     # Check sound valid and if not assign default
-    if ( !grep( $_ =~ /^$optHash{poSound}$/, @poSounds ) ) {
+    if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds ) {
       $optHash{poSound} = 'pushover';
     }
 
