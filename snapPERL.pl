@@ -26,6 +26,7 @@ use warnings;
 use Carp;            # To replace die calls.. Not yet implemented
 use Module::Load;    # Perl core module for on demand loading of optional modules
 use File::Spec;      # Used to read absolute path
+use LWP::UserAgent;  # Send Post/Get (For Pushover support)
 
 our $VERSION = 0.2.0;
 
@@ -33,7 +34,7 @@ our $VERSION = 0.2.0;
 
 # Get script absolute location
 my $absLocation = File::Spec->rel2abs(__FILE__);
-my ( $scriptPath, $ScriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
+my ( $scriptPath, $scriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
 
 # Define options file
 my $optionsFile = $scriptPath . 'snapPERL.conf';
@@ -640,6 +641,72 @@ sub email_send {
       $msg->send;
     }
   }
+  return 1;
+}
+
+##
+# sub load_send_message();
+# Sends message to various messaging API's 
+# usage send_message( %options_hash );
+sub send_message {
+  
+  my %optHash = @_;
+
+  if ( $opt{pushOverSend} ) {
+
+    # Valid Pushover sounds
+    my @poSounds = qw{  
+      pushover bike bugle cashregister classical cosmic falling gamelan incoming intermission 
+      magic mechanical pianobar siren spacealarm tugboat alien climb persistent echo updown none
+    };
+
+    # Check sound valid and if not assign default
+    if ( !grep( $_ =~ /^$optHash{poSound}$/, @poSounds ) ) {
+      $optHash{poSound} = 'pushover';
+    }
+
+    # Add default title if needed
+    if ( !defined $optHash{poTitle} ) { $optHash{poTitle} = 'snapPERL Message'; }
+
+    # Priority must be between -2 and 2
+    if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
+
+    # Priority 2 can only be used with device name
+    if ( !defined $optHash{poDevice} && $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
+
+    # Get LWP Agent
+    my $userAgent = LWP::UserAgent->new;
+    
+    # Post request to pushover API
+    my $response = $userAgent->post( $opt{pushOverUrl}, 
+      [ 
+        token     => $opt{pushOverToken},
+        user      => $opt{pushOverKey},
+        priority  => $optHash{poPriority},
+        device    => $optHash{poDevice},
+        title     => $optHash{poTitle},
+        sound     => $optHash{poSound},
+        message   => $optHash{message}, 
+      ]
+    );
+    
+    # Did the post fail?
+    if ( !$response->is_success ) {
+      # Log the failer
+      Logit( "Warning: Pushover message failed:-  $response->status_line", 2);
+    }
+    else {
+      # Log the success
+      logit( "Pushover message sent", 3);      
+    }
+  }
+  elsif ( $opt{nmaSend} ) {
+    #TODO
+  } 
+  elsif ( $opt{pushBulletSend} ) {
+    #TODO
+  }
+  
   return 1;
 }
 
