@@ -33,7 +33,7 @@ Helper script for snapraid created in PERL
      option for snapraid conf file before running.
 
  8.  If active in $options snapraid smart is run and details parsed from output and logged
-     warning will be sent based on Fail Percentage set in $options.
+     warning will be sent based on Fail Percentage / Temp and Errors set in $options.
 
  9.  If active in $options snapraid down is run and array is spun down. Details are logged.
 
@@ -91,6 +91,7 @@ distributing this SOFTWARE PRODUCT.
            Warn for high disk temp (Done v0.2)
            Warn for logged errors on disk (Done v0.2)
 
+           Check and confirm conf file when loaded (Plan v0.3)
            Check data and parity disks are present (Plan v0.3)
            Check and confirm conf settings (Plan v0.3)
 

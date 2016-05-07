@@ -351,10 +351,10 @@ sub snap_smart {
       if ( $fp > $opt{smartDiskWarn} ) { logit( "Warning: Fail percentage for $serial has exceded warning level", 2 ); }
 
       # Warn for disk temp
-      if ( $temp > $opt{smartMaxDriveTemp} ) { logit( "Warning: Device:- $device Serial:- $serial : Temp exceeds limit set in config!"); }
+      if ( $temp > $opt{smartMaxDriveTemp} ) { logit( "Warning: Device:- $device Serial:- $serial : Temp exceeds limit set in config!", 2); }
 
       # Warn for disk errors
-      if ( $error >= $opt{smartDiskErrorsWarn} ) { logit( "Warning: Device:- $device Serial:- $serial : Errors exceeds limit set in config!"); }
+      if ( $error >= $opt{smartDiskErrorsWarn} ) { logit( "Warning: Device:- $device Serial:- $serial : Errors exceeds limit set in config!", 2); }
 
     }
     elsif (m/next\s+year\s+is/) {
