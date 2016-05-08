@@ -86,8 +86,8 @@ if ( $diffHash{sync} ) {
 
   # Check set limits
   if ( $diffHash{removed} <= $opt{deletedFiles} && $diffHash{updated} <= $opt{changedFiles} ) {
-    logit( 'There are differnces. Sync running', 3 );
-    messageit( 'There are differnces. Sync running', 3 );
+    logit( 'There are differences. Sync running', 3 );
+    messageit( 'There are differences. Sync running', 3 );
     snap_sync();
   }
   else {
@@ -95,8 +95,8 @@ if ( $diffHash{sync} ) {
   }
 }
 else {
-  logit( 'No differnces. Sync not needed', 3 );
-  messageit( 'No differnces', 3 );
+  logit( 'No differences. Sync not needed', 3 );
+  messageit( 'No differences', 3 );
 }
 
 # Scrub needed? If sync is run daily with 'scrub -p new' $scrubNew will allways be 0.
