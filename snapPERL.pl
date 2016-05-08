@@ -54,7 +54,7 @@ my ( %diffHash, %opt, %conf, %customCmds );
 # Hold value of lowest LogLevel reached
 my $minLogLevel = 5;
 
-# Future windows compat temp var
+# Future windows compat temp var (windows compat planned for v0.5)
 my $slashType = '/';
 
 #-------- Script Start --------#
@@ -96,7 +96,7 @@ if ( $diffHash{sync} ) {
 }
 else {
   logit( 'No differnces. Sync not needed', 3 );
-  messageit( 'No differnces. Sync not needed', 3 );
+  messageit( 'No differnces', 3 );
 }
 
 # Scrub needed? If sync is run daily with 'scrub -p new' $scrubNew will allways be 0.
@@ -115,7 +115,7 @@ if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
 }
 else {
   logit( "No Scrub needed - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3 );
-  messageit ( 'No scrub needed', 3 );
+  messageit ( 'No post sync scrub needed', 3 );
 }
 
 # Create symbolic link pool
@@ -294,7 +294,7 @@ sub snap_sync {
 
     # Log details from sync.
     logit( "Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3 );
-    messageit( "Snapraid sync comp: $dataProcessed MB processed", 3);
+    messageit( "Snapraid sync comp: $dataProcessed MB", 3);
   }
   else {
     # Stop script.
@@ -307,7 +307,7 @@ sub snap_sync {
     # Check its a compatible version of snapraid.
     if ( $snapVersion >= 9.0 ) {
       logit( 'ScrubNew option set. Scrubing lastest sync data', 3 );
-      messageit( "Scrubbing latest sync", 3);
+      messageit( "Scrubbing latest sync data", 3);
       snap_scrub('-p new');
     }
     else {
@@ -340,7 +340,7 @@ sub snap_scrub {
 
     # Log details from scrub.
     logit( "Snapraid scrub completed: $dataProcessed MB processed", 3 );
-    messageit( "Snapraid scrub completed: $dataProcessed MB processed", 3 );
+    messageit( "Snapraid scrub comp: $dataProcessed MB", 3 );
   }
   else {
     # Stop script.
@@ -445,10 +445,11 @@ sub snap_run {
   my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stdout.tmp';
 
   # Build command
-  my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs 1\>$stdoutFile 2\>$stderrFile";
+  my $snapCmd     = $opt{snapRaidBin} . ' -c ' . $opt{snapRaidConf} . ' -v ' . @cmdArgs . ' 1\>' . $stdoutFile . ' 2\>' . $stderrFile;
+  my $snapCmdLog  = $opt{snapRaidBin} . ' -c ' . $opt{snapRaidConf} . ' -v ' . @cmdArgs;
 
   # Log command to be run
-  logit( "Running: $snapCmd", 4 );
+  logit( "Running: $snapCmdLog", 4 );
 
   # Run command
   my $exitCode = system($snapCmd);

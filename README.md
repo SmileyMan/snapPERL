@@ -87,9 +87,10 @@ distributing this SOFTWARE PRODUCT.
            Custom commands at start and completion of script (rubylaser) (Done in v0.1)
 
            Catch snapraid.exe stderr and action/log it (Done in v0.2)
-           Add pushover support and messages (Plan v0.2)
+           Add pushover support and messages (Done v0.2)
            Warn for high disk temp (Done v0.2)
            Warn for logged errors on disk (Done v0.2)
+           Warn only once for disks unless value changes (Plan 0.2)
 
            Check and confirm conf file when loaded (Plan v0.3)
            Check data and parity disks are present (Plan v0.3)
