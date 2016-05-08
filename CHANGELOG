@@ -8,6 +8,9 @@
             Script will not continue when snapraid is carp'ing errors
             Warnings for disk temp based on setting in snapPERL.conf
             Warnings for disk errors based on setting in snapPERL.conf
+            Added messaging support - Pushover only at this time
+            Move operation files to local script location
+            More than just a script now so runs in self contained location by default
 
 05/05/2016 v0.1
             Added emailing function for gmail and sendmail.
