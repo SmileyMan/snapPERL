@@ -445,8 +445,8 @@ sub snap_run {
   my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stdout.tmp';
 
   # Build command
-  my $snapCmd     = $opt{snapRaidBin} . ' -c ' . $opt{snapRaidConf} . ' -v ' . @cmdArgs . ' 1\>' . $stdoutFile . ' 2\>' . $stderrFile;
-  my $snapCmdLog  = $opt{snapRaidBin} . ' -c ' . $opt{snapRaidConf} . ' -v ' . @cmdArgs;
+  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs 1\>$stdoutFile 2\>$stderrFile";
+  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs";
 
   # Log command to be run
   logit( "Running: $snapCmdLog", 4 );
