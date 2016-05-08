@@ -1,7 +1,7 @@
 
 #Todo
 
-           Add email support and messages (Working in v0.1)
+           Add email support and messages (Working in v0.1 - Needs more testing on none Gmail)
            Config data in external file (Done in v0.1)
            Custom commands at start and completion of script (rubylaser) (Done in v0.1)
 
@@ -25,3 +25,14 @@
 
            Go over code and clean (Ongoing)
            Drink beer! (Ongoing)
+
+#Done
+           
+           Config data in external file (Done in v0.1)
+           Custom commands at start and completion of script (rubylaser) (Done in v0.1)
+
+           Catch snapraid.exe stderr and action/log it (Done in v0.2)
+           Add pushover support and messages (Done v0.2)
+           Warn for high disk temp (Done v0.2)
+           Warn for logged errors on disk (Done v0.2)
+           Make self contained for future growth (Done 0.2)
