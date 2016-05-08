@@ -96,6 +96,7 @@ distributing this SOFTWARE PRODUCT.
            Check and confirm conf file when loaded (Plan v0.3)
            Check data and parity disks are present (Plan v0.3)
            Check and confirm conf settings (Plan v0.3)
+           Keep x amount of logs (Plan v0.3)
 
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
            Mount and unmount parity (Plan v0.4)
