@@ -48,9 +48,14 @@ my $hostname = qx{hostname};
 # Remove vertical whitespace from hostname (Email issue)
 chop $hostname;
 
-my ( $scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion );
+my ( $scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion, $scriptMessage );
 my ( %diffHash, %opt, %conf, %customCmds );
+
+# Hold value of lowest LogLevel reached
 my $minLogLevel = 5;
+
+# Future windows compat temp var
+my $slashType = '/';
 
 #-------- Script Start --------#
 
@@ -81,7 +86,8 @@ if ( $diffHash{sync} ) {
 
   # Check set limits
   if ( $diffHash{removed} <= $opt{deletedFiles} && $diffHash{updated} <= $opt{changedFiles} ) {
-    logit( "There are differnces. Sync running", 3 );
+    logit( 'There are differnces. Sync running', 3 );
+    messageit( 'There are differnces. Sync running', 3 );
     snap_sync();
   }
   else {
@@ -90,6 +96,7 @@ if ( $diffHash{sync} ) {
 }
 else {
   logit( 'No differnces. Sync not needed', 3 );
+  messageit( 'No differnces. Sync not needed', 3 );
 }
 
 # Scrub needed? If sync is run daily with 'scrub -p new' $scrubNew will allways be 0.
@@ -99,6 +106,7 @@ if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
   # Do not scrub un sync'ed array!
   if ($syncSuccess) {
     logit( "Running scrub - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3 );
+    messageit ( 'Running scrub', 3 );
     snap_scrub( "-p $opt{scrubPercentage}", "-o $opt{scrubAge}" );
   }
   else {
@@ -107,16 +115,26 @@ if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
 }
 else {
   logit( "No Scrub needed - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3 );
+  messageit ( 'No scrub needed', 3 );
 }
 
 # Create symbolic link pool
-if ( $opt{pool} ) { snap_pool(); }
+if ( $opt{pool} ) { 
+  snap_pool(); 
+  messageit ( 'Pool comamnd run', 3 );
+}
 
 # Log smart details?
-if ( $opt{smartLog} ) { snap_smart(); }
+if ( $opt{smartLog} ) { 
+  snap_smart(); 
+  messageit ( 'Smart command run', 3 );
+}
 
 # Spindown?
-if ( $opt{spinDown} ) { snap_spindown(); }
+if ( $opt{spinDown} ) { 
+  snap_spindown(); 
+  messageit ( 'Array spundown', 3 );
+}
 
 if ( $opt{useCustomCmds} ) {
 
@@ -177,6 +195,7 @@ sub snap_status {
         }
       }
       logit( "$timeStamps files with zero sub-second timestamps, Snapraid touch command was run", 3 );
+      messageit( "ZSS Timestamps reset on $timeStamps files", 3 );
     }
     else {
       logit( "$timeStamps files with zero sub-second timestamps, No action taken", 3 );
@@ -229,7 +248,7 @@ sub snap_diff {
 
   # Sync needed?
   $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
-
+  
   # Log diff output
   foreach my $key ( sort( keys %diffHash ) ) {
     $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " ";
@@ -275,6 +294,7 @@ sub snap_sync {
 
     # Log details from sync.
     logit( "Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3 );
+    messageit( "Snapraid sync comp: $dataProcessed MB processed", 3);
   }
   else {
     # Stop script.
@@ -287,6 +307,7 @@ sub snap_sync {
     # Check its a compatible version of snapraid.
     if ( $snapVersion >= 9.0 ) {
       logit( 'ScrubNew option set. Scrubing lastest sync data', 3 );
+      messageit( "Scrubbing latest sync", 3);
       snap_scrub('-p new');
     }
     else {
@@ -319,6 +340,7 @@ sub snap_scrub {
 
     # Log details from scrub.
     logit( "Snapraid scrub completed: $dataProcessed MB processed", 3 );
+    messageit( "Snapraid scrub completed: $dataProcessed MB processed", 3 );
   }
   else {
     # Stop script.
@@ -419,8 +441,8 @@ sub snap_run {
 
   # Get passed args
   my @cmdArgs    = @_;
-  my $stderrFile = "$opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp";
-  my $stdoutFile = "$opt{snapRaidTmpLocation}/snapPERLcmd-stdout.tmp";
+  my $stderrFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stderr.tmp';
+  my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stdout.tmp';
 
   # Build command
   my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs 1\>$stdoutFile 2\>$stderrFile";
@@ -441,7 +463,7 @@ sub snap_run {
   # abort script and request user to investigate
   if ( $stderrStat[7] > 0 ) {
     logit( "Critical error. stderr file size: (stat $stderrStat[7] -- Exit code: $exitCode", 1 );
-    error_die("Critical error: Snapraid reports errors. Please check snapraid stderr file:- $opt{snapRaidTmpLocation}/snapPERLcmd-stderr.tmp");
+    error_die("Critical error: Snapraid reports errors. Please check snapraid stderr file:- $stderrFile");
   }
 
   # Pass stdout / exitcode back to caller
@@ -524,7 +546,7 @@ sub get_opt_hash {
   foreach ( split /\n/, $options ) {
 
     # Ignore lines without options in them
-    if (m/=/) {
+    if ( m/=/ ) {
 
       # Lexicals
       my ( $key, $value, $comment, $valueC );
@@ -544,14 +566,25 @@ sub get_opt_hash {
         }
 
         # Clean up keys/values
-        $key =~ s/^\s+|\s+$//g;
-        $value =~ s/^\s+|\s+$//g;
+        $key    =~ s/^\s+|\s+$//g;
+        $value  =~ s/^\s+|\s+$//g;
 
         #Add key,value pairs
         $opt{$key} = $value;
       }
     }
   }
+  
+  # If not defined in config file (Normal situation)
+  if ( !$opt{snapRaidTmpLocation} ) { $opt{snapRaidTmpLocation} = $scriptPath . 'tmp'; }
+  
+  # If not defined in config file (Normal situation)
+  if ( !$opt{logFileLocation} ) { $opt{logFileLocation} = $scriptPath . 'log'; }
+  
+  # Define location for script run files (Files that hold information about previous runs)
+  $opt{runFileLocation} = $scriptPath . 'run';
+  
+  
   return 1;
 }
 
@@ -566,6 +599,29 @@ sub script_comp {
 
   # Write log to location in $opt{logFile}
   if ( $opt{logFile} ) { write_log(); }
+  
+  my ( $messageTitle, $poMessagePriority );
+  
+  if ( $scriptMessage =~ m/Critical/ ){
+    $messageTitle = 'Critical - snapPERL Message';
+    $poMessagePriority = $opt{pushCriticalPriority};    
+  }
+  elsif ( $scriptMessage =~ m/Warning/ ) {
+    $messageTitle = 'Warning - snapPERL Message';
+    $poMessagePriority = $opt{pushWarningPriority};  
+  }
+  else {
+    $messageTitle = 'snapPERL Message';
+    $poMessagePriority = $opt{pushDefaultPriority};    
+  }
+  
+  send_message(       
+    poPriority  => $poMessagePriority,
+    poDevice    => $opt{pushDevice},
+    poTitle     => $messageTitle,
+    poSound     => $opt{pushSound},
+    message     => $scriptMessage, 
+  );
 
   return 1;
 }
@@ -645,7 +701,7 @@ sub email_send {
 }
 
 ##
-# sub load_send_message();
+# sub send_message();
 # Sends message to various messaging API's 
 # usage send_message( %options_hash );
 sub send_message {
@@ -845,8 +901,30 @@ sub logit {
       say( $timeStamp . " : " . $logText );
     }
 
+    # Add to message string (Send criticals and warnings to message services)
+    if ( $logLevel <= 2 ) { messageit( $logText, $logLevel); }
+
     # Add to log string
     $scriptLog .= $timeStamp . " : " . $logText . "\n";
+
+  }
+  return 1;
+}
+
+##
+# sub messageit()
+# Creates message to be sent via api's to Pushover/NMA/PushBullet.
+# usage messageIt('Text', Level);
+sub messageit {
+
+  # Get text and loglevel
+  my ( $logText, $logLevel ) = @_;
+
+  # (1=Critical, 2=Warning, 3=Normal)
+  if ( $logLevel <= $opt{messageLevel} or $logLevel == 1 ) {
+
+    # Add to message string
+    $scriptMessage .= $logText . "\n";
 
   }
   return 1;
@@ -860,7 +938,9 @@ sub write_log {
 
   # Write log to file
   # Todo: Try and Catch instead of killing script
-  open my $fh, '>', $opt{logFile} or die("Critical error: Unable to open logfile file. Please check config");
+  my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
+  
+  open my $fh, '>', $logOutFile or die("Critical error: Unable to open logfile file. Please check config");
   say {$fh} $scriptLog;
   close $fh;
 
