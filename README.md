@@ -7,6 +7,8 @@ Helper script for snapraid created in PERL
 
  Runs sync commands and verifys data using scrub command. Sends alerts when are issues found
  and aborts where needed. Tested with snapraid 10.0
+ 
+#####Script is expected to be run as root so calls snapraid as root
 
  1.  Parses the $options scalar and builds %opt hash from this. These options are used
      thoughout the script. Built this was to make the option more human readable.
