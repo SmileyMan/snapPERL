@@ -12,9 +12,11 @@
 
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
            Mount and unmount parity (Plan v0.4)
+           Use carp for errors and warnings (Plan 0.3)
            Add NMA support (Plan v0.4)
            Add Pushbullet support (Plan v0.4)
-           Portablity (Work with windows) (Plan 0.4)
+           
+           Portablity (Work with windows) (Plan 0.5)
 
            Go over code and clean (Ongoing)
            Drink beer! (Ongoing)

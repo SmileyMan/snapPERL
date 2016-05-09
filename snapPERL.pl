@@ -41,7 +41,7 @@ if ( $osName eq 'MSWin32' ) {
 #  $slashType = '\';
 }
 else {
-  # Extend path for smartctl run by snapraid.exe
+  # Unix base - Extend path for smartctl run by snapraid.exe
   local $ENV{PATH} = "$ENV{PATH}:/usr/sbin";
   $slashType = '/';
 }
@@ -52,21 +52,12 @@ my ( $scriptPath, $scriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
 
 # Define options file
 my $optionsFile = $scriptPath . 'snapPERL.conf';
-
 # Defind custom commands file
 my $customCmdsFile = $scriptPath . 'custom-cmds';
 
-# Define Script Varibles
-my $hostname = qx{hostname};
-
-# Remove vertical whitespace from hostname (Email issue)
-chop $hostname;
-
-my ( $scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion, $scriptMessage );
+# Define package varibles (Lexical to package)
+my ( $scriptLog, $scriptMessage );
 my ( %diffHash, %opt, %conf, %customCmds );
-
-# Hold value of lowest LogLevel reached
-my $minLogLevel = 5;
 
 #-------- Script Start --------#
 
@@ -110,13 +101,13 @@ else {
   messageit( 'No differences', 3 );
 }
 
-# Scrub needed? If sync is run daily with 'scrub -p new' $scrubNew will allways be 0.
+# Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will allways be 0.
 # So second check on oldest scrubbed block is made and scrub called if needed.
-if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
+if ( $opt{scrubNewDays} >= $opt{scrubDays} or $opt{scrubOldDays} >= $opt{scrubOldest} ) {
 
   # Do not scrub un sync'ed array!
-  if ($syncSuccess) {
-    logit( "Running scrub - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3 );
+  if ($opt{syncSuccess}) {
+    logit( "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 3 );
     messageit ( 'Running scrub', 3 );
     snap_scrub( "-p $opt{scrubPercentage}", "-o $opt{scrubAge}" );
   }
@@ -125,7 +116,7 @@ if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
   }
 }
 else {
-  logit( "No Scrub needed - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3 );
+  logit( "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 3 );
   messageit ( 'No post sync scrub needed', 3 );
 }
 
@@ -172,8 +163,8 @@ script_comp();
 sub snap_status {
 
   # Get snapraid version
-  my ( $output, $exitCode ) = snap_run('snapraid --version');
-  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
+  my ( $output, $exitCode ) = snap_run('--version');
+  ($opt{snapVersion}) = $output =~ m/snapraid\s+v(\d+.\d+)/;
 
   # Run snapraid status
   ( $output, $exitCode ) = snap_run('status');
@@ -191,7 +182,7 @@ sub snap_status {
     my $timeStamps = $1;
 
     # Reset enabled in config and snapraid supports?
-    if ( $opt{resetTimeStamps} && $snapVersion >= 10.0 ) {
+    if ( $opt{resetTimeStamps} && $opt{snapVersion} >= 10.0 ) {
 
       # Run snapraid touch
       my ( $touch, $exitCode ) = snap_run('touch');
@@ -217,10 +208,10 @@ sub snap_status {
   }
 
   # Get number of days since last scrub
-  ($scrubNew) = $output =~ m/the\s+newest\s+(\d+)./;
+  ($opt{scrubNewDays}) = $output =~ m/the\s+newest\s+(\d+)./;
 
   # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
-  ($scrubOld) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
+  ($opt{scrubOldDays}) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
 
   return 1;
 }
@@ -297,11 +288,11 @@ sub snap_sync {
     if (m/completed/) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
 
     # Was it a success?
-    if (m/Everything\s+OK/) { $syncSuccess = 1; }
+    if (m/Everything\s+OK/) { $opt{syncSuccess} = 1; }
 
   }
 
-  if ($syncSuccess) {
+  if ( $opt{syncSuccess} ) {
 
     # Log details from sync.
     logit( "Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3 );
@@ -316,7 +307,7 @@ sub snap_sync {
   if ( $opt{useScrubNew} ) {
 
     # Check its a compatible version of snapraid.
-    if ( $snapVersion >= 9.0 ) {
+    if ( $opt{snapVersion} >= 9.0 ) {
       logit( 'ScrubNew option set. Scrubing lastest sync data', 3 );
       messageit( "Scrubbing latest sync data", 3);
       snap_scrub('-p new');
@@ -364,7 +355,7 @@ sub snap_scrub {
 # sub snap_smart
 # Log smart details and warn if requited
 # usage snap_smart();
-sub snap_smart {
+sub snap_smart { #TODO: Use run dir to log data from last run
 
   # Run snapraid smart
   my ( $output, $exitCode ) = snap_run('smart');
@@ -587,6 +578,11 @@ sub get_opt_hash {
     }
   }
   
+  # Get hostname
+  $opt{hostname} = qx{hostname};
+  # Remove vertical whitespace from hostname (Email issue)
+  chop $opt{hostname};
+    
   # If not defined in config file (Normal situation)
   if ( !$opt{snapRaidTmpLocation} ) { $opt{snapRaidTmpLocation} = $scriptPath . 'tmp'; }
   
@@ -596,6 +592,8 @@ sub get_opt_hash {
   # Define location for script run files (Files that hold information about previous runs)
   $opt{runFileLocation} = $scriptPath . 'run';
   
+  # Hold value of lowest LogLevel reached
+  $opt{minLogLevel} = 5;
   
   return 1;
 }
@@ -647,8 +645,8 @@ sub email_send {
   my $subjectAlert;
 
   # Add alert to subject line if warnings or errors encountered.
-  if ( $minLogLevel < 3 ) {
-    $subjectAlert = $minLogLevel < 2 ? 'Critical' : 'Warning';
+  if ( $opt{minLogLevel} < 3 ) {
+    $subjectAlert = $opt{minLogLevel} < 2 ? 'Critical' : 'Warning';
   }
   else {
     $subjectAlert = '';
@@ -667,7 +665,7 @@ sub email_send {
       header => [
         From    => $opt{emailSendAddress},
         To      => $opt{emailAddress},
-        Subject => "$subjectAlert \[$hostname\] - snapPERL Log. Please see message body",
+        Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
       ],
       body => $scriptLog,
     );
@@ -697,7 +695,7 @@ sub email_send {
     my $msg = MIME::Lite->new(
       From    => $opt{emailSendAddress},
       To      => $opt{emailAddress},
-      Subject => "\[$hostname\] - snapPERL Log. Please see message body",
+      Subject => "\[$opt{hostname}\] - snapPERL Log. Please see message body",
       Data    => $scriptLog,
     );
 
@@ -900,7 +898,7 @@ sub logit {
   my ( $logText, $logLevel ) = @_;
 
   # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
-  $minLogLevel = $logLevel < $minLogLevel ? $logLevel : $minLogLevel;
+  $opt{minLogLevel} = $logLevel < $opt{minLogLevel} ? $logLevel : $opt{minLogLevel};
 
   # Get current timestamp
   my $timeStamp = time_stamp();
