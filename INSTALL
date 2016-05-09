@@ -4,20 +4,38 @@ MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
 
 # This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
 
+# Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
+
 # Install
 
-# Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
+
+Install Script:
+
+1. sudo apt-get install git
+2. git clone https://github.com/SmileyMan/snapPERL.git
+3. cd snapPERL
+4. ./install.sh
+6. Change settings in snapPERL.conf to suit
+7. Change settings in custom-cmds to suit (Optional)
+8. ./snapPERL.pl to run
+
+
+Manual:
+
 1. sudo apt-get install git
 2. git clone https://github.com/SmileyMan/snapPERL.git
 3. cd snapPERL
 4. cp snapPERL.conf.example snapPERL.conf
 5. cp custom-cmds.example custom-cmds
 6. Change settings in snapPERL.conf to suit
-7. Change settings in custom-cms to suit
-7. ./snapPERL.pl to run
-8. You can of course run as a root crontab. Be happy it does what you need first.
+7. Change settings in custom-cmds to suit (Optional)
+8. Change attributes of files to suite (chmod 600 on snapPERL.conf highly recommended)
+9. Install modules if needed (See top of this file)
+10. ./snapPERL.pl to run
+
+#### You can of course run as a root crontab. Be happy it does what you need first. ####
 
 # Update
 
-in snapPERL location on drive type 'git pull'
+in snapPERL location on drive type 'git pull' - This will not clobber your conf file but be sure to check for any new options
 
