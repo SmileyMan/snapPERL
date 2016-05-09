@@ -1,5 +1,7 @@
 #!/bin/bash
 
+### Testing only
+
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root" 1>&2
    exit 1
@@ -30,8 +32,8 @@ fi
 echo "Setting access attributes"
 chmod +x snapPERL.pl
 chmod 600 snapPERL.conf
-chmod 644 custom-cmds
-chmod 766 run/
-chmod 766 tmp/
-chmod 766 log/
+chmod 640 custom-cmds
+chmod 740 run/
+chmod 740 tmp/
+chmod 740 log/
 echo "Attributes set"
