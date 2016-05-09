@@ -1,6 +1,6 @@
 #!/bin/bash
 
-### Testing only
+#v0.2 install script!
 
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root" 1>&2
@@ -37,3 +37,41 @@ chmod 740 run/
 chmod 740 tmp/
 chmod 740 log/
 echo "Attributes set"
+
+echo "Install optional modules."
+
+echo -n "Are you going to use email? [y/n]"
+read -n 1 email
+
+if  [ "$email" == "y" ]; then
+  echo ""
+  echo "Installing MIME::Lite"
+  cpan install MIME::Lite
+elif [ "$email" == "n" ]; then
+  echo ""
+  echo "Email module not installed"
+else
+  echo ""
+  echo "Invalid option please run script again!"
+fi
+
+echo -n "Are you going to use gmail? [y/n]"
+read -n 1 gmail
+
+if  [ "$gmail" == "y" ]; then
+  echo ""
+  echo "Installing Email::Send::Gmail"
+  cpan install Email::Send::Gmail
+elif [ "$gmail" == "n" ]; then
+  echo ""
+  echo "Gmail modules not installed"
+else
+  echo ""
+  echo "Invalid option please run script again!"
+fi
+
+echo ""
+echo "INSTALL COMPLETED. snapPERL Script should be run as ROOT so snapraid.exe is called a ROOT"
+echo ""
+echo "Please now edit snapPERL.conf and custom-cmds to your needs"
+echo ""
