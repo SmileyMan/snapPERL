@@ -170,10 +170,10 @@ sub snap_status {
   ( $output, $exitCode ) = snap_run('status');
 
   # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected"); }
+  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected", 1); }
 
   # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); }
+  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Aborting: Sync currently in progress", 2); }
 
   # Check for zero sub-second timestamps and correct.
   if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
@@ -186,7 +186,7 @@ sub snap_status {
 
       # Run snapraid touch
       my ( $touch, $exitCode ) = snap_run('touch');
-      foreach ( split /\n/, $touch ) {
+      foreach ( split(/\n/, $touch) ) {
 
         # Log files where time stamps where changed.
         if (m/touch/) {
@@ -201,6 +201,7 @@ sub snap_status {
     }
     else {
       logit( "$timeStamps files with zero sub-second timestamps, No action taken", 3 );
+      messageit( "$timeStamps files with ZSS timestamps", 3 );
     }
   }
   else {
@@ -246,7 +247,7 @@ sub snap_diff {
   }
 
   # Missing values?
-  if ($missingValues) { error_die('Critical error: Values missing from snapraid diff.'); }
+  if ($missingValues) { error_die('Aborting: Values missing from snapraid diff', 2); }
 
   # Sync needed?
   $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
@@ -274,7 +275,7 @@ sub snap_sync {
   my ( $output, $exitCode ) = snap_run('sync');
 
   # Process output
-  foreach ( split /\n/, $output ) {
+  foreach ( split(/\n/, $output) ) {
 
     # Match for excluded files
     if (m/Excluding\s+file/) {
@@ -300,7 +301,7 @@ sub snap_sync {
   }
   else {
     # Stop script.
-    error_die("Critical error: Sync failed! \n$fullLog");    # todo
+    error_die("Aborting: Sync failed! - Aborting\n$fullLog", 2);    # todo
   }
 
   # New in snapraid. Verify new data from sync.
@@ -346,7 +347,7 @@ sub snap_scrub {
   }
   else {
     # Stop script.
-    error_die("Critical error: Scrub failed!\n$output");    # todo
+    error_die("Aborting: Scrub failed!\n$output", 2);    # todo
   }
   return 1;
 }
@@ -361,7 +362,7 @@ sub snap_smart { #TODO: Use run dir to log data from last run
   my ( $output, $exitCode ) = snap_run('smart');
 
   # Process Output
-  foreach ( split /\n/, $output ) {
+  foreach ( split(/\n/, $output) ) {
 
     # Match snapraid log for disk info
     # Todo: Not happy with this. Works fine but messy and unreadble... To re-visit
@@ -406,7 +407,7 @@ sub snap_spindown {
   my ( $output, $exitCode ) = snap_run('down');
 
   #Log output
-  foreach my $disk ( split /\n/, $output ) {
+  foreach my $disk ( split(/\n/, $output) ) {
     logit( $disk, 4 );
   }
 
@@ -456,17 +457,22 @@ sub snap_run {
   # Run command
   my $exitCode = system($snapCmd);
 
-  #my $cmdStderr = slurp_file($stderrFile);
+  my $cmdStderr = slurp_file($stderrFile);
   my $cmdStdout = slurp_file($stdoutFile);
 
   # Get file size of stderr file
   my @stderrStat = stat $stderrFile;
 
   # stderr file is NOT empty indicating snapraid wrote to stderr
-  # abort script and request user to investigate
   if ( $stderrStat[7] > 0 ) {
-    logit( "Critical error. stderr file size: (stat $stderrStat[7] -- Exit code: $exitCode", 1 );
-    error_die("Critical error: Snapraid reports errors. Please check snapraid stderr file:- $stderrFile");
+      # abort script and request user to investigate
+    if ( grep { $_ =~ /sync|scrub|status|diff/ } @cmdArgs ) {
+      logit( "Critical error. stderr file size: $stderrStat[7] -- Exit code: $exitCode", 1 );
+      error_die("Aborting: Snapraid cmd reports errors. Please check snapraid stderr file:- $stderrFile", 2);  
+    } 
+    else { 
+      #TODO: Don't abort for smart|pool|spindown etc. But log error
+    };
   }
 
   # Pass stdout / exitcode back to caller
@@ -490,19 +496,19 @@ sub parse_conf {
   $confData = slurp_file( $opt{snapRaidConf} );
 
   # Process slurped conf file.
-  foreach ( split /\n/, $confData ) {
+  foreach my $confIn ( split(/\n/, $confData) ) {
 
     # Remove leading whitespace
-    s/^\s+//g;
+    $confIn =~ s/^\s+//g;
 
     # If not commented out or empty line
-    if ( !m/^#/ && m/^\w+/ ) {
-      my ( $key, $value ) = split /\s/, $_, 2;
+    if ( $confIn !~ m/^#/ && $confIn =~ m/^\w+/ ) {
+      my ( $key, $value ) = split(/\s/, $confIn, 2);
 
       # Stop uninitialized warnings if there is no whitespace after key only option https://github.com/SmileyMan/snapPERL/issues/1
       if ( !defined $value ) { $value = ''; }
-      $key =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
-      $value =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
+      $key    =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
+      $value  =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
 
       # Process extra parity
       if ( $key =~ m/\d-parity/ ) { $conf{xparity}->[ $#{ $conf{xparity} } + 1 ] = $value; }
@@ -512,9 +518,9 @@ sub parse_conf {
 
       # Process data disks
       elsif ( $key =~ m/disk|data/ ) {
-        my ( $drive, $path ) = split /\s/, $value, 2;
-        $drive =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
-        $path =~ s/^\s+|\s+$//g;     # Remove leading and trailing whitespace
+        my ( $drive, $path ) = split(/\s/, $value, 2);
+        $drive  =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
+        $path   =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
         $conf{$key}->{$drive} = $path;
       }
 
@@ -546,23 +552,23 @@ sub get_opt_hash {
   $options = slurp_file($optionsFile);
 
   # Cycle though options and build hash
-  foreach ( split /\n/, $options ) {
+  foreach my $optin ( split(/\n/, $options) ) {
 
     # Ignore lines without options in them
-    if ( m/=/ ) {
+    if ( $optin =~ m/=/ ) {
 
       # Lexicals
       my ( $key, $value, $comment, $valueC );
 
       # Split keys
-      ( $key, $valueC ) = split /=/;
+      ( $key, $valueC ) = split(/=/, $optin);
 
       # Don't add commented out keys
       if ( $key !~ /#/ ) {
 
         # Split Values
         if ( $valueC =~ m/#/ ) {
-          ( $value, $comment ) = split /#/, $valueC;
+          ( $value, $comment ) = split(/#/, $valueC);
         }
         else {
           $value = $valueC;
@@ -610,30 +616,32 @@ sub script_comp {
   # Write log to location in $opt{logFile}
   if ( $opt{logFile} ) { write_log(); }
   
-  my ( $messageTitle, $poMessagePriority );
-  
-  if ( $scriptMessage =~ m/Critical/ ){
-    $messageTitle = 'Critical ';
-    $poMessagePriority = $opt{pushCriticalPriority};    
-  }
-  elsif ( $scriptMessage =~ m/Warning/ ) {
-    $messageTitle = 'Warning ';
-    $poMessagePriority = $opt{pushWarningPriority};  
-  }
-  else {
-    $poMessagePriority = $opt{pushDefaultPriority};    
-  }
-  
-  $messageTitle .= $messageTitle . $opt{hostname} . ' snapPERL';
-  
-  send_message(       
-    poPriority  => $poMessagePriority,
-    poDevice    => $opt{pushDevice},
-    poTitle     => $messageTitle,
-    poSound     => $opt{pushSound},
-    message     => $scriptMessage, 
-  );
+  # Send pushover message?
+  if ( $opt{pushOverSend} and $scriptMessage ) {
 
+    my $messageTitle;
+    my $poMessagePriority = $opt{pushDefaultPriority};
+    
+    # Modify for Warnings or Critical
+    if ( $opt{minLogLevel} < 3 ) {
+      $messageTitle       = $opt{minLogLevel} < 2 ? 'Critical' : 'Warning';
+      $poMessagePriority  = $opt{minLogLevel} < 2 ? $opt{pushCriticalPriority} : $opt{pushWarningPriority};
+    } 
+        
+    # Build title
+    $messageTitle .=  " $opt{hostname} snapPERL";
+    
+    # Send message
+    send_message_po (       
+      poPriority  => $poMessagePriority,
+      poDevice    => $opt{pushDevice},
+      poTitle     => $messageTitle,
+      poSound     => $opt{pushSound},
+      message     => $scriptMessage, 
+    );
+
+  }
+  
   return 1;
 }
 
@@ -715,65 +723,57 @@ sub email_send {
 # sub send_message();
 # Sends message to various messaging API's 
 # usage send_message( %options_hash );
-sub send_message {
+sub send_message_po {
   
+  # Get passed options
   my %optHash = @_;
 
-  if ( $opt{pushOverSend} ) {
+  # Valid Pushover sounds
+  my @poSounds = qw{  
+    pushover bike bugle cashregister classical cosmic falling gamelan incoming intermission 
+    magic mechanical pianobar siren spacealarm tugboat alien climb persistent echo updown none
+  };
 
-    # Valid Pushover sounds
-    my @poSounds = qw{  
-      pushover bike bugle cashregister classical cosmic falling gamelan incoming intermission 
-      magic mechanical pianobar siren spacealarm tugboat alien climb persistent echo updown none
-    };
-
-    # Check sound valid and if not assign default
-    if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds ) {
-      $optHash{poSound} = 'pushover';
-    }
-
-    # Add default title if needed
-    if ( !defined $optHash{poTitle} ) { $optHash{poTitle} = $opt{hostname} . ' snapPERL'; }
-
-    # Priority must be between -2 and 2
-    if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
-
-    # Priority 2 can only be used with device name
-    if ( !defined $optHash{poDevice} && $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
-
-    # Get LWP Agent
-    my $userAgent = LWP::UserAgent->new;
-    
-    # Post request to pushover API
-    my $response = $userAgent->post( $opt{pushOverUrl}, 
-      [ 
-        token     => $opt{pushOverToken},
-        user      => $opt{pushOverKey},
-        priority  => $optHash{poPriority},
-        device    => $optHash{poDevice},
-        title     => $optHash{poTitle},
-        sound     => $optHash{poSound},
-        message   => $optHash{message}, 
-      ]
-    );
-    
-    # Did the post fail?
-    if ( !$response->is_success ) {
-      # Log the failer
-      Logit( "Warning: Pushover message failed:-  $response->status_line", 2);
-    }
-    else {
-      # Log the success
-      logit( "Pushover message sent", 3);      
-    }
+  # Check sound valid and if not assign default
+  if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds ) {
+    $optHash{poSound} = 'pushover';
   }
-  elsif ( $opt{nmaSend} ) {
-    #TODO
-  } 
-  elsif ( $opt{pushBulletSend} ) {
-    #TODO
-  }
+
+  # Add default title if needed
+  if ( !defined $optHash{poTitle} ) { $optHash{poTitle} = "$opt{hostname} snapPERL"; }
+
+  # Priority must be between -2 and 2
+  if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
+
+  # Priority 2 can only be used with device name
+  if ( !defined $optHash{poDevice} && $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
+
+  # Get LWP Agent
+  my $userAgent = LWP::UserAgent->new;
   
+  # Post request to pushover API
+  my $response = $userAgent->post( $opt{pushOverUrl}, 
+    [ 
+      token     => $opt{pushOverToken},
+      user      => $opt{pushOverKey},
+      priority  => $optHash{poPriority},
+      device    => $optHash{poDevice},
+      title     => $optHash{poTitle},
+      sound     => $optHash{poSound},
+      message   => $optHash{message}, 
+    ]
+  );
+  
+  # Did the post fail?
+  if ( !$response->is_success ) {
+    # Log the fail!
+    Logit( "Warning: Pushover message failed:-  $response->status_line", 2);
+  }
+  else {
+    # Log the success
+    logit( 'Pushover message sent', 3);      
+  }
+
   return 1;
 }
 
@@ -788,7 +788,7 @@ sub load_custom_cmds {
   # Slurp the custom commands file :P
   $customCmdsIn = slurp_file($customCmdsFile);
 
-  foreach my $line ( split /\n/, $customCmdsIn ) {
+  foreach my $line ( split(/\n/, $customCmdsIn) ) {
 
     # Remove any leading whitespace
     $line =~ s/^\s+//g;
@@ -797,7 +797,7 @@ sub load_custom_cmds {
     if ( $line !~ m/^#/ && $line =~ m/=/ ) {
 
       #Split on '='
-      my ( $type, $cmd ) = split /=/, $line;
+      my ( $type, $cmd ) = split(/=/, $line);
 
       # Ignore lines without pre or post commands
       if ( $type =~ m/pre|post/ ) {
@@ -852,7 +852,7 @@ sub slurp_file {
 
   # File exists?
   if ( -e $file ) {
-    open my $fh, '<', $file or error_die("Critical error: Unable to open $file.");
+    open my $fh, '<', $file or error_die("Aborting: Unable to open $file.", 2);
     local $/ = undef;    # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
     $slushPuppie = <$fh>;    # My favorite slurp
     close $fh;               # Will auto close once once out of scope regardless
@@ -1003,10 +1003,13 @@ sub debug_log {
 sub error_die {
 
   # Get message (list context gets first item in array only)
-  my ($message) = @_;
+  my ($message, $level) = @_;
+
+  # if not passed set to 2
+  $level = $level ? 2 : $level;
 
   # Log error message
-  logit( $message, 1 );
+  logit( $message, $level);
 
   # Cleanup
   script_comp();
