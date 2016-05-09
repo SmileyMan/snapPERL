@@ -31,7 +31,7 @@ echo "Setting access attributes"
 chmod +x snapPERL.pl
 chmod 600 snapPERL.conf
 chmod 644 custom-cmds
-chmod 755 run/
-chmod 755 tmp/
-chmod 755/log
+chmod 766 run/
+chmod 766 tmp/
+chmod 766 log/
 echo "Attributes set"
