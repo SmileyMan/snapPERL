@@ -37,5 +37,5 @@ Manual:
 
 # Update
 
-in snapPERL location on drive type 'git pull' - This will not clobber your conf file but be sure to check for any new options
+In snapPERL location on drive type 'git pull' - This will not clobber your conf file but be sure to check for any new options
 

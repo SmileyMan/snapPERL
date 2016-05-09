@@ -614,7 +614,10 @@ sub script_comp {
   if ( $opt{emailSend} ) { email_send(); }
 
   # Write log to location in $opt{logFile}
-  if ( $opt{logFile} ) { write_log(); }
+  if ( $opt{logFile} ) { 
+    my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
+    write_log($logOutFile); 
+  }
   
   # Send pushover message?
   if ( $opt{pushOverSend} and $scriptMessage ) {
@@ -898,6 +901,9 @@ sub logit {
   # Get text and loglevel
   my ( $logText, $logLevel ) = @_;
 
+  # if not passed set to 3
+  $logLevel = $logLevel ? $logLevel : 3;
+
   # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
   $opt{minLogLevel} = $logLevel < $opt{minLogLevel} ? $logLevel : $opt{minLogLevel};
 
@@ -930,6 +936,9 @@ sub messageit {
 
   # Get text and loglevel
   my ( $logText, $logLevel ) = @_;
+  
+  # if not passed set to 3
+  $logLevel = $logLevel ? $logLevel : 3;
 
   # (1=Critical, 2=Warning, 3=Normal)
   if ( $logLevel <= $opt{messageLevel} or $logLevel == 1 ) {
@@ -948,10 +957,9 @@ sub messageit {
 sub write_log {
 
   # Write log to file
-  # Todo: Try and Catch instead of killing script
-  my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
+  my $logOutFile = shift;
   
-  open my $fh, '>', $logOutFile or die("Critical error: Unable to open logfile file. Please check config");
+  open my $fh, '>', $logOutFile or logit( "Warning: Unable to write $logOutFile . Please check config", 2);
   say {$fh} $scriptLog;
   close $fh;
 
@@ -1006,7 +1014,7 @@ sub error_die {
   my ($message, $level) = @_;
 
   # if not passed set to 2
-  $level = $level ? 2 : $level;
+  $level = $level ? $level : 2;
 
   # Log error message
   logit( $message, $level);
