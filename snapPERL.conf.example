@@ -1,31 +1,43 @@
-# Sub in snapPERL.pl is called to build option hash. Makes it more readable 
+# Sub in snapPERL.pl is called to build option hash on this config file. Makes it more readable 
 # (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
 # All white space, empty lines, lines without an = in and lines starting with # are ignored when parsed
+# Everything is optional and does not need changing for script to run. Items marked with a * point to normal default location
 
-## Email Options
+## Email Options (Optional)
+#
 emailSend=0                                                   #Send email?
 emailAddress=youremail@email.com                              #Email address
 emailSendAddress=youremail@email.com                          #Email address to show has being sent from
 emailUseSmtp=0                                                #Use none sendmail or external smtp if not using gmail 
 emailSmtpAddress=smtp.yourisp.com                             #SMTP address to use (Needed if emailUseSmtp set)
 
-## Gmail settings
+## Gmail settings (Optional)
+#
 useGmail=0                                                    #Use Gmail to send mail 
 gmailPass=yourgmailpass                                       #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
-  
-## Pushover Options
+ 
+## Pushover Options (Optional)
+#
 pushOverSend=0                                                #Send pushover alerts? - Not currently active
 pushOverKey=##############################                    #Pushover user key
 pushOverToken=##############################                  #Pushover app token
 pushOverUrl=https://api.pushover.net/1/messages.json          #Pushover url to send messages
+pushDefaultPriority=-1                                        #Default priority to send messages (-1 = silent)
+pushWarningPriority=0                                         #Priority to send messages with warnings (0 = alert)
+pushCriticalPriority=1                                        #Priority to send messages with criticals (1 = alert that will sound even in quite mode)
+pushSound=pushover                                            #Sound to use for alerts (Default pushover)
+pushDevice=                                                   #Device to send messages to (empty = all)
 
-## Notify my Android options
+## Notify my Android options (Optional)
+#
 nmaSend=0                                                     #Send NMA alerts - Not currently active
 
-## Pushbullet options
+## Pushbullet options (Optional)
+#
 pushBulletSend=0                                              #Send pushbullet alerts - Not currently active
   
-## Sync and Scrub options
+## Sync and Scrub options (Defaults will work fine for most people)
+#
 deletedFiles=50                                               #Max amount of deleted files to auto sync
 changedFiles=500                                              #Max amount of changed files to auto sync
 scrubDays=7                                                   #Number of days before scrub is run 
@@ -33,23 +45,33 @@ scrubOldest=30                                                #Max oldest block 
 scrubAge=10                                                   #Data older than days
 scrubPercentage=8                                             #Percentage of array to scrub
 useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
+resetTimeStamps=1                                             #Use touch command to reset sub-second time stamps (Snapraid 10.0+)
   
-## Smart options
+## Smart options (Defaults will work fine for most people)
+#
 smartLog=1                                                    #Check and log Smart data. 
 smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings
 smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
+smartMaxDriveTemp=50                                          #Max temp before warnings issued
+smartDiskErrorsWarn=1                                         #Number of errors to send warning regarding disk (Normal setting is 1)
  
-## Snapraid options
-snapRaidConf=/etc/snapraid.conf                               #Location of snapraid conf file
+## Snapraid options (Default locations)
+# 
+snapRaidConf=/etc/snapraid.conf                               #*Location of snapraid conf file
+snapRaidTmpLocation=                                          #Location of tmp files (if not defined uses scripts tmp directory)
  
-## Binary locations
-snapRaidBin=/usr/local/bin/snapraid                           #Snapriad binary location
-curlBin=/usr/bin/curl                                         #Curl binary location - Not currently used
+## Binary locations(Default locations)
+#
+snapRaidBin=/usr/local/bin/snapraid                           #*Snapriad binary location
+curlBin=/usr/bin/curl                                         #*Curl binary location - Not currently used
 
-## Other Options
+## Other Options (Defaults will work fine for most. Disable logStdOut is using cron)
+#
 spinDown=0                                                    #Spindown array once script completed?
 pool=0                                                        #Run pool command if valid config option found?
-logFile=/tmp/snapPERL.log                                     #Logfile location (If not running as root must be writeable)
-logLevel=3                                                    #Level of logging (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
+logFile=snapPERL.log                                          #Logfile location (If not running as root must be writeable)
+logFileLocation=                                              #Location of log file (If not defined uses scripts log directory)
+logLevel=3                                                    #Level of logging (1:- Critical, 2:- Warning, 3:- Info, 4:- Everything, 5:- Debug)
+messageLevel=3                                                #For pushover/NMA/PushBullet (1:- Critical only 2:- +Warnings 3:- Normal)
 logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P).
 useCustomCmds=0                                               #Load custom pre and post commands from custom-cmds file (optional feature)

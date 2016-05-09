@@ -1,3 +1,22 @@
+##/##/#### v0.2
+            Fixed Critical Issue: Unable to load config file whan called outside working directory
+            File slurping moved to dedicated function
+            Added option to turn auto touch off
+            Remove issue where touch would run on snapraid versions below 10.0
+            Function snap_run now collects stderr/exitcode as well as stdout
+            Script will abort if snapraid has wrote to stderr asking for user intervention
+            Script will not continue when snapraid is carp'ing errors
+            Warnings for disk temp based on setting in snapPERL.conf
+            Warnings for disk errors based on setting in snapPERL.conf
+            Added messaging support - Pushover only at this time
+            Move operation files to local script location
+            More than just a script now so runs in self contained location by default
+            Added tmp dir for temp files during snap_run
+            Added log dir for the created log file (Plan to keep x amount of logs)
+            Added run dir for static data regarding last run
+            Path added due to issue with snapraid.exe runnig smartctl
+            OS type detected for future portablity compat
+
 05/05/2016 v0.1
             Added emailing function for gmail and sendmail.
             Testing live on my own Array.

@@ -1,4 +1,4 @@
-# snapPERL v0.1
+# snapPERL v0.2
 Helper script for snapraid created in PERL
 
 ####Note: Wife is 40 weeks pregnant so if I disappear for a couple of weeks it's not abandoned!
@@ -33,7 +33,7 @@ Helper script for snapraid created in PERL
      option for snapraid conf file before running.
 
  8.  If active in $options snapraid smart is run and details parsed from output and logged
-     warning will be sent based on Fail Percentage set in $options.
+     warning will be sent based on Fail Percentage / Temp and Errors set in $options.
 
  9.  If active in $options snapraid down is run and array is spun down. Details are logged.
 
@@ -62,6 +62,8 @@ Please have a play but expect bugs / things going wrong. This is just a wrapper 
 and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
 (only snapraid.exe manipulates the data)
 
+####Script passes Perl::Critic - Severity: Stern
+
 ###__This script does not write or manipulate and Array Data. It is a wrapper for snapraid http://www.snapraid.it/__
 
 #Disclaimer
@@ -75,22 +77,4 @@ with your equipment and other software installed on your equipment. You are also
 responsible for the protection of your equipment and backup of your data, and THE PROVIDER
 will not be liable for any damages you may suffer in connection with using, modifying, or 
 distributing this SOFTWARE PRODUCT. 
-
-
-
-#Todo
-
-           Add catches for snapraid DANGER! and Warning! messages
-           Catch snapraid.exe stderr and action/log it (Is this needed? Maybe just log)
-           Add pushover support and messages
-           Add NMA support
-           Add Pushbullet support
-           Add email support and messages (Working in v0.1)
-           Config data in external file (Done in v0.1)
-           Check data and parity disks are present
-           Check and confirm conf settings
-           Mount and unmount parity
-           Custom commands at start and completion of script (rubylaser) (Done in v0.1)
-           Go over code and clean
-           Drink beer! (Need some now)
 

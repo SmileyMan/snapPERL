@@ -10,9 +10,6 @@
 #############################################################################################
 # Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
 #
-# Based on a bash script http://zackreed.me/articles/83-updated-snapraid-sync-script by 
-# Zack Read (http://zackreed.me) - Extended and converted to PERL
-#
 # Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
 # I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
 #
@@ -20,46 +17,63 @@
 
 package snapPERL;
 
-# Pragmas 
+# Pragmas
 use 5.010;
 use strict;
 use warnings;
 
 # Modules
-use Module::Load;           # Perl core module for on demand loading of optional modules
+use Carp;            # To replace die calls.. Not yet implemented
+use Module::Load;    # Perl core module for on demand loading of optional modules
+use File::Spec;      # Used to read absolute path
+use LWP::UserAgent;  # Send Post/Get (For Pushover support)
 
-our $VERSION = 0.1.0;
+our $VERSION = 0.2.0;
 
 ############################## Script only from here ########################################
 
+# Get os name from perl inbuilt varible
+my $osName = $^O;
+my $slashType;
+
+# Configure for Win32 / Unix bases
+if ( $osName eq 'MSWin32' ) {
+#  $slashType = '\';
+}
+else {
+  # Unix base - Extend path for smartctl run by snapraid.exe
+  local $ENV{PATH} = "$ENV{PATH}:/usr/sbin";
+  $slashType = '/';
+}
+
+# Get script absolute location
+my $absLocation = File::Spec->rel2abs(__FILE__);
+my ( $scriptPath, $scriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
+
 # Define options file
-my $optionsFile = 'snapPERL.conf';
-
+my $optionsFile = $scriptPath . 'snapPERL.conf';
 # Defind custom commands file
-my $customCmdsFile = 'custom-cmds';
+my $customCmdsFile = $scriptPath . 'custom-cmds';
 
-# Define Script Varibles
-my $hostname = qx/hostname/;
-# Remove vertical whitespace from hostname (Email issue)
-chop $hostname; 
-
-my ($scriptLog, $scrubNew, $scrubOld, $syncSuccess, $snapVersion);
-my (%diffHash, %opt, %conf, %customCmds);
-my $minLogLevel = 5;
+# Define package varibles (Lexical to package)
+my ( $scriptLog, $scriptMessage );
+my ( %diffHash, %opt, %conf, %customCmds );
 
 #-------- Script Start --------#
 
 # Build options hash
 get_opt_hash();
 
-logit('Script Started', 3);
+logit( 'Script Started', 3 );
 
 # using optional feature 'custom commands'?
 if ( $opt{useCustomCmds} ) {
-	# Load from file 'custom-cmds'
-	load_custom_cmds();
-	# Run pre commands
-	custom_cmds('pre');
+
+  # Load from file 'custom-cmds'
+  load_custom_cmds();
+
+  # Run pre commands
+  custom_cmds('pre');
 }
 
 # Parse snapraid conf file
@@ -71,50 +85,66 @@ snap_diff();
 
 # Sync needed?
 if ( $diffHash{sync} ) {
+
   # Check set limits
   if ( $diffHash{removed} <= $opt{deletedFiles} && $diffHash{updated} <= $opt{changedFiles} ) {
-    logit("There are differnces. Sync running", 3);
+    logit( 'There are differences. Sync running', 3 );
+    messageit( 'There are differences. Sync running', 3 );
     snap_sync();
-  } 
-  else {
-    logit('Warning: Deleted or Changed files exceed limits set. Sync not completed', 2)
   }
-} 
+  else {
+    logit( 'Warning: Deleted or Changed files exceed limits set. Sync not completed', 2 );
+  }
+}
 else {
-  logit('No differnces. Sync not needed', 3);
+  logit( 'No differences. Sync not needed', 3 );
+  messageit( 'No differences', 3 );
 }
 
-# Scrub needed? If sync is run daily with 'scrub -p new' $scrubNew will allways be 0.
+# Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will allways be 0.
 # So second check on oldest scrubbed block is made and scrub called if needed.
-if ( $scrubNew >= $opt{scrubDays} or $scrubOld >= $opt{scrubOldest} ) {
+if ( $opt{scrubNewDays} >= $opt{scrubDays} or $opt{scrubOldDays} >= $opt{scrubOldest} ) {
+
   # Do not scrub un sync'ed array!
-  if ( $syncSuccess ) {
-    logit("Running scrub - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3);
-    snap_scrub("-p $opt{scrubPercentage}", "-o $opt{scrubAge}");
-  } 
-  else {
-    logit('Sync was not run. Scrub only performed after successful sync.', 3)
+  if ($opt{syncSuccess}) {
+    logit( "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 3 );
+    messageit ( 'Running scrub', 3 );
+    snap_scrub( "-p $opt{scrubPercentage}", "-o $opt{scrubAge}" );
   }
-} 
+  else {
+    logit( 'Sync was not run. Scrub only performed after successful sync.', 3 );
+  }
+}
 else {
-  logit("No Scrub needed - Days since last scrub:- $scrubNew - Oldest scrubbed block:- $scrubOld", 3);
+  logit( "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 3 );
+  messageit ( 'No post sync scrub needed', 3 );
 }
 
 # Create symbolic link pool
-if ( $opt{pool} ) { snap_pool(); } 
+if ( $opt{pool} ) { 
+  snap_pool(); 
+  messageit ( 'Pool comamnd run', 3 );
+}
 
 # Log smart details?
-if ( $opt{smartLog} ) { snap_smart(); }
+if ( $opt{smartLog} ) { 
+  snap_smart(); 
+  messageit ( 'Smart command run', 3 );
+}
 
 # Spindown?
-if ( $opt{spinDown} ) { snap_spindown(); }
+if ( $opt{spinDown} ) { 
+  snap_spindown(); 
+  messageit ( 'Array spundown', 3 );
+}
 
 if ( $opt{useCustomCmds} ) {
+
   # Run post commands
   custom_cmds('post');
 }
 
-logit('Script Completed', 3);
+logit( 'Script Completed', 3 );
 
 # Add debug information to log
 if ( $opt{logLevel} >= 5 ) { debug_log(); }
@@ -124,94 +154,109 @@ script_comp();
 
 #-------- Script End --------#
 
-
 #-------- Subroutines --------#
-
-##
-# sub snap_diff();
-# Runs diff command and scrapes values into a hash and sets 'sync' value to true if differences detected.
-# usage snap_diff();
-sub snap_diff {
-  
-  # Define local variables
-  my ($diffLogTxt, $missingValues);
-  
-  # Run snapraid diff
-  my $output = snap_run('diff');
-  
-  # Assign values to hash
-  ($diffHash{equal})    = $output =~ m/(\d+)\s+equal/;
-  ($diffHash{added})    = $output =~ m/(\d+)\s+added/;
-  ($diffHash{removed})  = $output =~ m/(\d+)\s+removed/;
-  ($diffHash{updated})  = $output =~ m/(\d+)\s+updated/;
-  ($diffHash{moved})    = $output =~ m/(\d+)\s+moved/;
-  ($diffHash{copied})   = $output =~ m/(\d+)\s+copied/;
-  ($diffHash{restored}) = $output =~ m/(\d+)\s+restored/;
-  
-  # If any of the diff values missing stop script.
-  foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
-    if ( !defined $diffHash{$diffKey} ) {
-      logit("Warning: Missing value \'$diffKey\' during diff command!", 2);
-      $missingValues = 1;
-    }
-  }
-  
-  if ( $missingValues ) { error_die('Critical error: Values missing from snapraid diff.'); }
-  
-  # Sync needed?
-  $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
-  
-  # Log diff output
-  foreach my $key ( sort(keys %diffHash) ) {
-    $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " ";
-  }
-  logit($diffLogTxt, 3);
-
-  return 1;
-}
 
 ##
 # sub snap_status()
 # Calls snapraid status and does a few checks. Sets days since last scrub. Corrects sub second timestamps when detected.
 # usage snap_status();
 sub snap_status {
-  
-  # Run snapraid status
-  my $output = snap_run('status');
-  
-  # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected"); };
-  
-  # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Critical error: Sync currently in progress"); };
-  
-  # Check for sub-second timestamps and correct.
-  if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
-    # Run snapraid touch
-    my $touch = snap_run('touch');
-    foreach ( split /\n/, $touch ) {
-      # Log files where time stamps where changed.
-      if ( m/touch/ ) { 
-      	# Remove word 'touch' before logging
-      	s/touch\s//;
-      	logit("Sub-second timestamp reset on :- $_", 4); 
-      }
-    }
-    logit("$1 files with sub-second timestamps, Snapraid touch command was run", 3);
-  } 
-  else {
-    logit('No sub-second timestamps detected', 3);
-  };
-  
-  # Get number of days since last scrub
-  ($scrubNew) = $output =~ m/the\s+newest\s+(\d+)./;
-  
-  # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
-  ($scrubOld) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
-  
+
   # Get snapraid version
-  $output = snap_run('snapraid --version');
-  ($snapVersion) = $output =~ m/snapraid\s+v(\d+.\d+)/;
+  my ( $output, $exitCode ) = snap_run('--version');
+  ($opt{snapVersion}) = $output =~ m/snapraid\s+v(\d+.\d+)/;
+
+  # Run snapraid status
+  ( $output, $exitCode ) = snap_run('status');
+
+  # Critical error. Status shows errors detected.
+  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected", 1); }
+
+  # Critical error. Sync currently in progress.
+  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Aborting: Sync currently in progress", 2); }
+
+  # Check for zero sub-second timestamps and correct.
+  if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
+
+    # Grab match so I don't clobber it later with new code
+    my $timeStamps = $1;
+
+    # Reset enabled in config and snapraid supports?
+    if ( $opt{resetTimeStamps} && $opt{snapVersion} >= 10.0 ) {
+
+      # Run snapraid touch
+      my ( $touch, $exitCode ) = snap_run('touch');
+      foreach ( split(/\n/, $touch) ) {
+
+        # Log files where time stamps where changed.
+        if (m/touch/) {
+
+          # Remove word 'touch' before logging
+          s/touch\s//;
+          logit( "Zero sub-second timestamp reset on :- $_", 4 );
+        }
+      }
+      logit( "$timeStamps files with zero sub-second timestamps, Snapraid touch command was run", 3 );
+      messageit( "ZSS Timestamps reset on $timeStamps files", 3 );
+    }
+    else {
+      logit( "$timeStamps files with zero sub-second timestamps, No action taken", 3 );
+      messageit( "$timeStamps files with ZSS timestamps", 3 );
+    }
+  }
+  else {
+    logit( 'No zero sub-second timestamps detected', 3 );
+  }
+
+  # Get number of days since last scrub
+  ($opt{scrubNewDays}) = $output =~ m/the\s+newest\s+(\d+)./;
+
+  # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
+  ($opt{scrubOldDays}) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
+
+  return 1;
+}
+
+##
+# sub snap_diff();
+# Runs diff command and scrapes values into a hash and sets 'sync' value to true if differences detected.
+# usage snap_diff();
+sub snap_diff {
+
+  # Lexicals
+  my ( $diffLogTxt, $missingValues );
+
+  # Run snapraid diff
+  my ( $output, $exitCode ) = snap_run('diff');
+
+  # Assign values to hash
+  ( $diffHash{equal} )    = $output =~ m/(\d+)\s+equal/;
+  ( $diffHash{added} )    = $output =~ m/(\d+)\s+added/;
+  ( $diffHash{removed} )  = $output =~ m/(\d+)\s+removed/;
+  ( $diffHash{updated} )  = $output =~ m/(\d+)\s+updated/;
+  ( $diffHash{moved} )    = $output =~ m/(\d+)\s+moved/;
+  ( $diffHash{copied} )   = $output =~ m/(\d+)\s+copied/;
+  ( $diffHash{restored} ) = $output =~ m/(\d+)\s+restored/;
+
+  # If any of the diff values missing stop script.
+  foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
+    if ( !defined $diffHash{$diffKey} ) {
+      logit( "Warning: Missing value \'$diffKey\' during diff command!", 2 );
+      $missingValues = 1;
+    }
+  }
+
+  # Missing values?
+  if ($missingValues) { error_die('Aborting: Values missing from snapraid diff', 2); }
+
+  # Sync needed?
+  $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
+  
+  # Log diff output
+  foreach my $key ( sort( keys %diffHash ) ) {
+    $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " ";
+  }
+  logit( $diffLogTxt, 3 );
 
   return 1;
 }
@@ -221,49 +266,55 @@ sub snap_status {
 # Runs a sync command and logs details
 # usage snap_sync();
 sub snap_sync {
-  
+
+  # Lexicals
   my $excludedCount = 0;
-  my ($dataProcessed, $fullLog);
-  
+  my ( $dataProcessed, $fullLog );
+
   # Run snapraid sync command
-  my $output = snap_run('sync');
-  
+  my ( $output, $exitCode ) = snap_run('sync');
+
   # Process output
-  foreach ( split /\n/, $output ) {
-    
+  foreach ( split(/\n/, $output) ) {
+
     # Match for excluded files
-    if ( m/Excluding\s+file/ ) { 
-      $excludedCount++; 
-    } 
-    else { 
-      $fullLog .= $_ . "\n"; 
+    if (m/Excluding\s+file/) {
+      $excludedCount++;
     }
+    else {
+      $fullLog .= $_ . "\n";
+    }
+
     # Get size of data processed
-    if ( m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
-    
+    if (m/completed/) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
+
     # Was it a success?
-    if ( m/Everything\s+OK/ ) { $syncSuccess = 1; }
-  
+    if (m/Everything\s+OK/) { $opt{syncSuccess} = 1; }
+
   }
-  
-  if ( $syncSuccess ) {
-    # Log details from sync. 
-    logit("Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3);
-  } 
+
+  if ( $opt{syncSuccess} ) {
+
+    # Log details from sync.
+    logit( "Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3 );
+    messageit( "Snapraid sync comp: $dataProcessed MB", 3);
+  }
   else {
     # Stop script.
-    error_die("Critical error: Sync failed! \n$fullLog"); # todo
+    error_die("Aborting: Sync failed! - Aborting\n$fullLog", 2);    # todo
   }
-  
+
   # New in snapraid. Verify new data from sync.
   if ( $opt{useScrubNew} ) {
+
     # Check its a compatible version of snapraid.
-    if ( $snapVersion >= 9.0 ) {
-      logit('ScrubNew option set. Scrubing lastest sync data', 3);
+    if ( $opt{snapVersion} >= 9.0 ) {
+      logit( 'ScrubNew option set. Scrubing lastest sync data', 3 );
+      messageit( "Scrubbing latest sync data", 3);
       snap_scrub('-p new');
-    } 
+    }
     else {
-      logit('Warning: ScrubNew is set but snapraid version must be 9.0 or higher!', 2)
+      logit( 'Warning: ScrubNew is set but snapraid version must be 9.0 or higher!', 2 );
     }
   }
   return 1;
@@ -272,29 +323,31 @@ sub snap_sync {
 ##
 # sub snap_scrub
 # Perform a scrub on array
-# usage snap_scrub('Plan to use staring with -p', 'Min age to scrub starting with -o'); 
+# usage snap_scrub('Plan to use staring with -p', 'Min age to scrub starting with -o');
 sub snap_scrub {
-  
-  # Grab first to elements of passed array.  
+
+  # Grab first to elements of passed array.
   my $plan = shift;
-  my $age  = shift // '';
-  my ($dataProcessed, $success);
-    
-  my $output = snap_run($plan, $age, 'scrub');
+  my $age = shift // '';
+  my ( $dataProcessed, $success );
+
+  my ( $output, $exitCode ) = snap_run( $plan, $age, 'scrub' );
 
   #Get size of data processed
   if ( $output =~ m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
-  
+
   # Was it a success?
   if ( $output =~ m/Everything\s+OK/ ) { $success = 1; }
-  
-  if ( $success ) {
+
+  if ($success) {
+
     # Log details from scrub.
-    logit("Snapraid scrub completed: $dataProcessed MB processed", 3);
-  } 
+    logit( "Snapraid scrub completed: $dataProcessed MB processed", 3 );
+    messageit( "Snapraid scrub comp: $dataProcessed MB", 3 );
+  }
   else {
     # Stop script.
-    error_die("Critical error: Scrub failed!\n$output"); # todo
+    error_die("Aborting: Scrub failed!\n$output", 2);    # todo
   }
   return 1;
 }
@@ -303,36 +356,42 @@ sub snap_scrub {
 # sub snap_smart
 # Log smart details and warn if requited
 # usage snap_smart();
-sub snap_smart {
-  
+sub snap_smart { #TODO: Use run dir to log data from last run
+
   # Run snapraid smart
-  my $output = snap_run('smart');
-  
+  my ( $output, $exitCode ) = snap_run('smart');
+
   # Process Output
-  foreach ( split /\n/, $output ) {
-  
+  foreach ( split(/\n/, $output) ) {
+
     # Match snapraid log for disk info
     # Todo: Not happy with this. Works fine but messy and unreadble... To re-visit
-    if ( m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/ ) {
-      
+    if (m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/) {
+
       # Get params
-      my ($temp, $days, $error, $fp, $size, $serial, $device, $disk) = m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
-      $fp = sprintf("%02d", $fp);    
-      logit("Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 3);
-      
-      # Warn if needed
-      if ( $fp > $opt{smartDiskWarn} ) { logit("Warning: Fail percentage for $serial has exceded warning level", 2); } 
-    
-    } 
-    elsif ( m/next\s+year\s+is/ ) {
-      
+      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
+      $fp = sprintf( "%02d", $fp );
+      logit( "Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 3 );
+
+      # Warn if Fail Percentage exceeds limit sit in config
+      if ( $fp > $opt{smartDiskWarn} ) { logit( "Warning: Fail percentage for $serial has exceded warning level", 2 ); }
+
+      # Warn for disk temp
+      if ( $temp > $opt{smartMaxDriveTemp} ) { logit( "Warning: Device:- $device Serial:- $serial : Temp exceeds limit set in config!", 2); }
+
+      # Warn for disk errors
+      if ( $error >= $opt{smartDiskErrorsWarn} ) { logit( "Warning: Device:- $device Serial:- $serial : Errors exceeds limit set in config!", 2); }
+
+    }
+    elsif (m/next\s+year\s+is/) {
+
       # Get FP for array
       my ($arrayFail) = m/next\s+year\s+is\s+(\d+)%/;
-      logit("Calculated chance of at least one drive failing in the next year is $arrayFail%", 3);
-      
-      # Warn if needed
-      if ( $arrayFail > $opt{smartWarn} ) { logit('Warning: Chance of disk in array failing within the next year has exceded warning level', 2); } 
-    
+      logit( "Calculated chance of at least one drive failing in the next year is $arrayFail%", 3 );
+
+      # Warn if Fail Percentage for Array exceeds limit sit in config
+      if ( $arrayFail > $opt{smartWarn} ) { logit( 'Warning: Chance of disk in array failing within the next year has exceded warning level', 2 ); }
+
     }
   }
   return 1;
@@ -343,17 +402,17 @@ sub snap_smart {
 # Spin down disks (Plan to add options for selecting which disks to spin down)
 # usage snap_spindown();
 sub snap_spindown {
-  
+
   # Run snapraid down
-  my $output = snap_run('down');
-  
+  my ( $output, $exitCode ) = snap_run('down');
+
   #Log output
-  foreach my $disk ( split /\n/, $output ) {
-    logit($disk, 4);  
+  foreach my $disk ( split(/\n/, $output) ) {
+    logit( $disk, 4 );
   }
-    
-  logit('Array spundown', 3);
-  
+
+  logit( 'Array spundown', 3 );
+
   return 1;
 }
 
@@ -365,13 +424,13 @@ sub snap_pool {
 
   # Check for pool entry in snapraid config
   if ( $conf{pool} ) {
-    
+
     # Run snapraid pool command
-    my $output = snap_run('pool');
-    
+    my ( $output, $exitCode ) = snap_run('pool');
+
     # Get number of links created
     my ($links) = $output =~ m/(\d+)\s+links/;
-    logit("Pool command run and $links links created in $conf{pool}", 3);
+    logit( "Pool command run and $links links created in $conf{pool}", 3 );
   }
   return 1;
 }
@@ -379,16 +438,49 @@ sub snap_pool {
 ##
 # sub snap_run
 # Run a snapraid command
-# usage snap_run(options, command);
+# usage snap_run(command);
+# returns stdout, exitcode
 sub snap_run {
 
-  my $snapCmd = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @_";
-  logit("Running snapraid command: $snapCmd", 4);
-  
-  # Run command and return output to caller.
-  # Todo: Try catch to be implemented...
-  return qx/$snapCmd/;
+  # Get passed args
+  my @cmdArgs    = @_;
+  my $stderrFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stderr.tmp';
+  my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stdout.tmp';
 
+  # Build command
+  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs 1\>$stdoutFile 2\>$stderrFile";
+  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs";
+
+  # Log command to be run
+  logit( "Running: $snapCmdLog", 4 );
+
+  # Run command
+  my $exitCode = system($snapCmd);
+
+  my $cmdStderr = slurp_file($stderrFile);
+  my $cmdStdout = slurp_file($stdoutFile);
+
+  # Get file size of stderr file
+  my @stderrStat = stat $stderrFile;
+
+  # stderr file is NOT empty indicating snapraid wrote to stderr
+  if ( $stderrStat[7] > 0 ) {
+      # abort script and request user to investigate
+    if ( grep { $_ =~ /sync|scrub|status|diff/ } @cmdArgs ) {
+      logit( "Critical error. stderr file size: $stderrStat[7] -- Exit code: $exitCode", 1 );
+      error_die("Aborting: Snapraid cmd reports errors. Please check snapraid stderr file:- $stderrFile", 2);  
+    } 
+    else { 
+      #TODO: Don't abort for smart|pool|spindown etc. But log error
+    };
+  }
+
+  # Pass stdout / exitcode back to caller
+  else {
+    return ( $cmdStdout, $exitCode );
+  }
+
+  return 1;
 }
 
 ##
@@ -396,44 +488,48 @@ sub snap_run {
 # Parse the snapraid conf file into a 2 dimension hash->hash/array
 # usage parse_conf();
 sub parse_conf {
-  
+
   # Define local slurp scalar
   my $confData;
-  
+
   # Slurp the conf file :P
-  {
-    open my $fh, '<', $opt{snapRaidConf} or error_die("Critical error: Unable to open conf file. Please check config");
-    local $/ = undef;   # Don't clobber global version.
-    $confData = <$fh>;
-    close $fh;
-  }
+  $confData = slurp_file( $opt{snapRaidConf} );
 
   # Process slurped conf file.
-  foreach ( split /\n/, $confData ) {
-    s/^\s+//g;             # Remove leading whitespace
+  foreach my $confIn ( split(/\n/, $confData) ) {
+
+    # Remove leading whitespace
+    $confIn =~ s/^\s+//g;
+
     # If not commented out or empty line
-    if ( !m/^#/ && m/^\w+/ ) {
-      my ($key, $value) = split /\s/, $_, 2;
+    if ( $confIn !~ m/^#/ && $confIn =~ m/^\w+/ ) {
+      my ( $key, $value ) = split(/\s/, $confIn, 2);
+
       # Stop uninitialized warnings if there is no whitespace after key only option https://github.com/SmileyMan/snapPERL/issues/1
       if ( !defined $value ) { $value = ''; }
-      $key   =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
-      $value =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
+      $key    =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
+      $value  =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
+
       # Process extra parity
-      if ( $key =~ m/\d-parity/ ) { $conf{xparity}->[ $#{$conf{xparity}}+1 ] = $value; }
+      if ( $key =~ m/\d-parity/ ) { $conf{xparity}->[ $#{ $conf{xparity} } + 1 ] = $value; }
+
       # Process other options and add to hash-array
-      elsif ( $key =~ m/content|exclude|share|smartctl/ ) { $conf{$key}->[ $#{$conf{$key}}+1 ] = $value; }
+      elsif ( $key =~ m/content|exclude|share|smartctl/ ) { $conf{$key}->[ $#{ $conf{$key} } + 1 ] = $value; }
+
       # Process data disks
-      elsif ( $key =~ m/disk|data/ ) { 
-        my ($drive, $path) = split /\s/, $value, 2;
-        $drive =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
-        $path  =~ s/^\s+|\s+$//g;   # Remove leading and trailing whitespace
+      elsif ( $key =~ m/disk|data/ ) {
+        my ( $drive, $path ) = split(/\s/, $value, 2);
+        $drive  =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
+        $path   =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
         $conf{$key}->{$drive} = $path;
       }
+
       # Values left are singular. Add to hash
-      else { 
+      else {
         if ( $value =~ /\w+/ ) {
-          $conf{$key} = $value; 
-        } 
+          $conf{$key} = $value;
+        }
+
         # Has no value so assign boolean
         else {
           $conf{$key} = 1;
@@ -449,43 +545,62 @@ sub parse_conf {
 # Build option hash from $options at start of script;
 # usage get_opt_hash();
 sub get_opt_hash {
-  
+
   my $options;
-  
+
   # Slurp the options file :P
-  {
-    open my $fh, '<', $optionsFile or error_die("Critical error: Unable to open options file. Does it exist?");
-    local $/ = undef;   # Don't clobber global version.
-    $options = <$fh>;
-    close $fh;
-  }
-  
+  $options = slurp_file($optionsFile);
+
   # Cycle though options and build hash
-  foreach ( split /\n/, $options ) {
+  foreach my $optin ( split(/\n/, $options) ) {
+
     # Ignore lines without options in them
-    if ( m/=/ ) {    
-      my ($key, $value, $comment, $valueC);
+    if ( $optin =~ m/=/ ) {
+
+      # Lexicals
+      my ( $key, $value, $comment, $valueC );
+
       # Split keys
-      ($key, $valueC) = split /=/;
+      ( $key, $valueC ) = split(/=/, $optin);
+
       # Don't add commented out keys
       if ( $key !~ /#/ ) {
+
         # Split Values
         if ( $valueC =~ m/#/ ) {
-          ($value, $comment) = split /#/, $valueC;
-        } 
+          ( $value, $comment ) = split(/#/, $valueC);
+        }
         else {
           $value = $valueC;
         }
-      
+
         # Clean up keys/values
-        $key   =~ s/^\s+|\s+$//g;
-        $value =~ s/^\s+|\s+$//g;
-      
+        $key    =~ s/^\s+|\s+$//g;
+        $value  =~ s/^\s+|\s+$//g;
+
         #Add key,value pairs
         $opt{$key} = $value;
       }
     }
   }
+  
+  # Get hostname
+  $opt{hostname} = qx{hostname};
+  # Remove vertical whitespace from hostname (Email issue)
+  chop $opt{hostname};
+    
+  # If not defined in config file (Normal situation)
+  if ( !$opt{snapRaidTmpLocation} ) { $opt{snapRaidTmpLocation} = $scriptPath . 'tmp'; }
+  
+  # If not defined in config file (Normal situation)
+  if ( !$opt{logFileLocation} ) { $opt{logFileLocation} = $scriptPath . 'log'; }
+  
+  # Define location for script run files (Files that hold information about previous runs)
+  $opt{runFileLocation} = $scriptPath . 'run';
+  
+  # Hold value of lowest LogLevel reached
+  $opt{minLogLevel} = 5;
+  
   return 1;
 }
 
@@ -494,85 +609,171 @@ sub get_opt_hash {
 # Called at end of script. Basic clean up tasks.
 # usage script_comp();
 sub script_comp {
- 
+
   # Send email if enabled
   if ( $opt{emailSend} ) { email_send(); }
+
   # Write log to location in $opt{logFile}
   if ( $opt{logFile} ) { write_log(); }
+  
+  # Send pushover message?
+  if ( $opt{pushOverSend} and $scriptMessage ) {
+
+    my $messageTitle;
+    my $poMessagePriority = $opt{pushDefaultPriority};
+    
+    # Modify for Warnings or Critical
+    if ( $opt{minLogLevel} < 3 ) {
+      $messageTitle       = $opt{minLogLevel} < 2 ? 'Critical' : 'Warning';
+      $poMessagePriority  = $opt{minLogLevel} < 2 ? $opt{pushCriticalPriority} : $opt{pushWarningPriority};
+    } 
+        
+    # Build title
+    $messageTitle .=  " $opt{hostname} snapPERL";
+    
+    # Send message
+    send_message_po (       
+      poPriority  => $poMessagePriority,
+      poDevice    => $opt{pushDevice},
+      poTitle     => $messageTitle,
+      poSound     => $opt{pushSound},
+      message     => $scriptMessage, 
+    );
+
+  }
   
   return 1;
 }
 
 ##
-# sub get_email_send
+# sub email_send
 # Send the scriptLog out via email;
 # usage email_send();
 sub email_send {
-	
-  my $subjectAlert;	
-  
+
+  my $subjectAlert;
+
   # Add alert to subject line if warnings or errors encountered.
-  if ( $minLogLevel < 3 ) { 
-  	$subjectAlert = $minLogLevel < 2 ? 'Critical' : 'Warning';  	
-  }	
-  else {
-  	$subjectAlert = '';
+  if ( $opt{minLogLevel} < 3 ) {
+    $subjectAlert = $opt{minLogLevel} < 2 ? 'Critical' : 'Warning';
   }
-  
+  else {
+    $subjectAlert = '';
+  }
+
   # Use gmail SMTP to send the email.. System I use.
   if ( $opt{useGmail} ) {
-  	
+
     # Load on demand need modules for Gmail send
     autoload Email::Send;
     autoload Email::Send::Gmail;
     autoload Email::Simple::Creator;
-  	
+
     # Create gmail email
     my $email = Email::Simple->create(
       header => [
         From    => $opt{emailSendAddress},
         To      => $opt{emailAddress},
-        Subject =>  "$subjectAlert \[$hostname\] - snapPERL Log. Please see message body",
+        Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
       ],
       body => $scriptLog,
     );
 
     # Account details for gmail
     my $sender = Email::Send->new(
-      {  mailer      => 'Gmail',
-         mailer_args => [
-           username    => $opt{emailAddress},
-           password    => $opt{gmailPass},
-         ]
+      {
+        mailer      => 'Gmail',
+        mailer_args => [
+          username => $opt{emailAddress},
+          password => $opt{gmailPass},
+        ]
       }
     );
-  
+
     # Send using gmail SMTP
     eval { $sender->send($email) };
-    if ( $@ ) { logit("Warning: Gmail SMTP email send failed... $@"); }
-  
+    if ($@) { logit("Warning: Gmail SMTP email send failed... $@"); }
+
   }
   else {
- 
+
     # Load on demand needed modules for Email send
     autoload MIME::Lite;
- 
-    # Send email via localy configured sendmail server. 
+
+    # Send email via localy configured sendmail server.
     my $msg = MIME::Lite->new(
       From    => $opt{emailSendAddress},
       To      => $opt{emailAddress},
-      Subject => "\[$hostname\] - snapPERL Log. Please see message body",
+      Subject => "\[$opt{hostname}\] - snapPERL Log. Please see message body",
       Data    => $scriptLog,
     );
-    
-    # Send.             
+
+    # Send.
     if ( $opt{emailUseSmtp} ) {
-      $msg->send('smtp', $opt{emailSmtpAddress}, Timeout => 60 );
+      $msg->send( 'smtp', $opt{emailSmtpAddress}, Timeout => 60 );
     }
     else {
       $msg->send;
     }
   }
+  return 1;
+}
+
+##
+# sub send_message();
+# Sends message to various messaging API's 
+# usage send_message( %options_hash );
+sub send_message_po {
+  
+  # Get passed options
+  my %optHash = @_;
+
+  # Valid Pushover sounds
+  my @poSounds = qw{  
+    pushover bike bugle cashregister classical cosmic falling gamelan incoming intermission 
+    magic mechanical pianobar siren spacealarm tugboat alien climb persistent echo updown none
+  };
+
+  # Check sound valid and if not assign default
+  if ( !grep { $_ =~ /^$optHash{poSound}$/ } @poSounds ) {
+    $optHash{poSound} = 'pushover';
+  }
+
+  # Add default title if needed
+  if ( !defined $optHash{poTitle} ) { $optHash{poTitle} = "$opt{hostname} snapPERL"; }
+
+  # Priority must be between -2 and 2
+  if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
+
+  # Priority 2 can only be used with device name
+  if ( !defined $optHash{poDevice} && $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
+
+  # Get LWP Agent
+  my $userAgent = LWP::UserAgent->new;
+  
+  # Post request to pushover API
+  my $response = $userAgent->post( $opt{pushOverUrl}, 
+    [ 
+      token     => $opt{pushOverToken},
+      user      => $opt{pushOverKey},
+      priority  => $optHash{poPriority},
+      device    => $optHash{poDevice},
+      title     => $optHash{poTitle},
+      sound     => $optHash{poSound},
+      message   => $optHash{message}, 
+    ]
+  );
+  
+  # Did the post fail?
+  if ( !$response->is_success ) {
+    # Log the fail!
+    Logit( "Warning: Pushover message failed:-  $response->status_line", 2);
+  }
+  else {
+    # Log the success
+    logit( 'Pushover message sent', 3);      
+  }
+
   return 1;
 }
 
@@ -583,28 +784,27 @@ sub email_send {
 sub load_custom_cmds {
 
   my $customCmdsIn;
-  
+
   # Slurp the custom commands file :P
-  {
-    open my $fh, '<', $customCmdsFile or error_die("Critical error: Unable to open custom commands file. Does it exist?");
-    local $/ = undef;   # Don't clobber global version.
-    $customCmdsIn = <$fh>;
-    close $fh;
-  }
-	
-  foreach my $line ( split /\n/, $customCmdsIn ) {
+  $customCmdsIn = slurp_file($customCmdsFile);
+
+  foreach my $line ( split(/\n/, $customCmdsIn) ) {
+
     # Remove any leading whitespace
     $line =~ s/^\s+//g;
-  	
+
     #Ignore comments and empty lines
     if ( $line !~ m/^#/ && $line =~ m/=/ ) {
+
       #Split on '='
-      my ($type, $cmd) = split /=/, $line;
+      my ( $type, $cmd ) = split(/=/, $line);
+
       # Ignore lines without pre or post commands
       if ( $type =~ m/pre|post/ ) {
-      	# Add to Hash/Array
-      	$customCmds{$type}->[$#{$customCmds{$type}}+1] = $cmd;
-      }  		
+
+        # Add to Hash/Array
+        $customCmds{$type}->[ $#{ $customCmds{$type} } + 1 ] = $cmd;
+      }
     }
   }
   return 1;
@@ -615,24 +815,55 @@ sub load_custom_cmds {
 # Runs custom pre and post commands defined in custom-cmds file.
 # usage custom_cmds('pre|post');
 sub custom_cmds {
-	  
+
   # Get type of operation
   my $type = shift;
+
   # Check it's valid
   if ( $type !~ m/pre|post/ ) {
-    logit("Warning: Custom commands called with incorrect option", 2);
+    logit( "Warning: Custom commands called with incorrect option", 2 );
     return;
   }
-	
+
   # Prevent working on undefined hash if no commands loaded
   if ( defined $customCmds{$type} ) {
+
     # For each array element in hash
-    for ( my $i=0; $i <= $#{$customCmds{$type}}; $i++ ) {
+    for ( my $i = 0 ; $i <= $#{ $customCmds{$type} } ; $i++ ) {
+
       # Run command
-      system($customCmds{$type}->[$i]);
-    }	   
+      system( $customCmds{$type}->[$i] );
+    }
   }
   return 1;
+}
+
+##
+# sub slurp_file();
+# Slurp the contents of a file and return a scalar
+# usage $contents = slurp_file(filename);
+sub slurp_file {
+
+  # Get file to slurp
+  my $file = shift;
+
+  # mmm Slurp
+  my $slushPuppie;
+
+  # File exists?
+  if ( -e $file ) {
+    open my $fh, '<', $file or error_die("Aborting: Unable to open $file.", 2);
+    local $/ = undef;    # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
+    $slushPuppie = <$fh>;    # My favorite slurp
+    close $fh;               # Will auto close once once out of scope regardless
+  }
+  else {
+    # File don't exist - Send to log @ debug level
+    logit( "Warning: call to slurp_file() with none existing file: $file", 5 );
+  }
+
+  # Return the Slurpie
+  return $slushPuppie;
 }
 
 ##
@@ -640,17 +871,21 @@ sub custom_cmds {
 # Create a timestamp for the log.
 # usage $stamp = time_stamp();
 sub time_stamp {
-  
+
   # Define month names
   my @months = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
+
   # Define day names
-  my @days   = qw( Sun Mon Tue Wed Thu Fri Sat Sun );
+  my @days = qw( Sun Mon Tue Wed Thu Fri Sat Sun );
+
   # Get current time
-  my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+  my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime();
+
   # Convert to full 4 digit year
   my $fullYear = $year + 1900;
+
   # Return formated timestamp
-  return sprintf("%02d:%02d:%02d - %s %d %s %d", $hour, $min, $sec, $days[$wday], $mday, $months[$mon], $fullYear);
+  return sprintf( "%02d:%02d:%02d - %s %d %s %d", $hour, $min, $sec, $days[$wday], $mday, $months[$mon], $fullYear );
 
 }
 
@@ -661,27 +896,50 @@ sub time_stamp {
 sub logit {
 
   # Get text and loglevel
-  my ($logText, $logLevel) = @_;
- 
-  # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal 
-  $minLogLevel = $logLevel < $minLogLevel ? $logLevel : $minLogLevel;
+  my ( $logText, $logLevel ) = @_;
+
+  # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
+  $opt{minLogLevel} = $logLevel < $opt{minLogLevel} ? $logLevel : $opt{minLogLevel};
 
   # Get current timestamp
   my $timeStamp = time_stamp();
-  
+
   # (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
-  if ( $logLevel <= $opt{logLevel} or $logLevel == 1) {
+  if ( $logLevel <= $opt{logLevel} or $logLevel == 1 ) {
     if ( $opt{logStdout} == 1 ) {
+
       # Send to stdout
-      say ($timeStamp . " : " . $logText);
-    } 
-      
-    # Add to log string 
+      say( $timeStamp . " : " . $logText );
+    }
+
+    # Add to message string (Send criticals and warnings to message services)
+    if ( $logLevel <= 2 ) { messageit( $logText, $logLevel); }
+
+    # Add to log string
     $scriptLog .= $timeStamp . " : " . $logText . "\n";
 
   }
   return 1;
-} 
+}
+
+##
+# sub messageit()
+# Creates message to be sent via api's to Pushover/NMA/PushBullet.
+# usage messageIt('Text', Level);
+sub messageit {
+
+  # Get text and loglevel
+  my ( $logText, $logLevel ) = @_;
+
+  # (1=Critical, 2=Warning, 3=Normal)
+  if ( $logLevel <= $opt{messageLevel} or $logLevel == 1 ) {
+
+    # Add to message string
+    $scriptMessage .= $logText . "\n";
+
+  }
+  return 1;
+}
 
 ##
 # sub write_log();
@@ -691,7 +949,9 @@ sub write_log {
 
   # Write log to file
   # Todo: Try and Catch instead of killing script
-  open my $fh, '>', $opt{logFile} or die("Critical error: Unable to open logfile file. Please check config");
+  my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
+  
+  open my $fh, '>', $logOutFile or die("Critical error: Unable to open logfile file. Please check config");
   say {$fh} $scriptLog;
   close $fh;
 
@@ -704,35 +964,35 @@ sub write_log {
 # Cycles over multi dimension hash created from config file.
 # usage debug_log();
 sub debug_log {
-  
+
   # May just use Data::Dumper for this
-  
+
   # Debug -> Log Options!
-  logit('-------- Options --------', 5);
-  foreach ( sort(keys %opt) ) {
-    logit("Option :: $_ -> $opt{$_}", 5);
+  logit( '-------- Options --------', 5 );
+  foreach ( sort( keys %opt ) ) {
+    logit( "Option :: $_ -> $opt{$_}", 5 );
   }
-  logit('-------- Options End --------', 5);
-  
+  logit( '-------- Options End --------', 5 );
+
   # Debug -> Log Config!
-  logit('-------- Config --------', 5);
-  foreach my $confKey( sort(keys %conf) ) {
-    if ( ref($conf{$confKey}) eq "HASH" ) {
-      foreach my $diskKey ( keys %{$conf{$confKey}} ) {
-        logit("Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5);
+  logit( '-------- Config --------', 5 );
+  foreach my $confKey ( sort( keys %conf ) ) {
+    if ( ref( $conf{$confKey} ) eq "HASH" ) {
+      foreach my $diskKey ( keys %{ $conf{$confKey} } ) {
+        logit( "Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5 );
       }
-    } 
-    elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
-      for ( my $i=0; $i <= $#{$conf{$confKey}}; $i++ )  {
-        logit("Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5);
+    }
+    elsif ( ref( $conf{$confKey} ) eq "ARRAY" ) {
+      for ( my $i = 0 ; $i <= $#{ $conf{$confKey} } ; $i++ ) {
+        logit( "Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5 );
       }
-    } 
+    }
     else {
-      logit("Config : $confKey -> $conf{$confKey}", 5);
+      logit( "Config : $confKey -> $conf{$confKey}", 5 );
     }
   }
-  logit('-------- Config End--------', 5);
-  
+  logit( '-------- Config End--------', 5 );
+
   return 1;
 }
 
@@ -743,16 +1003,19 @@ sub debug_log {
 sub error_die {
 
   # Get message (list context gets first item in array only)
-  my ($message) = @_;
+  my ($message, $level) = @_;
+
+  # if not passed set to 2
+  $level = $level ? 2 : $level;
 
   # Log error message
-  logit($message, 1);
+  logit( $message, $level);
 
   # Cleanup
   script_comp();
 
   # Kill script
-  die;          # Wipe yourself off. You're dead.
+  die;    # Wipe yourself off. You're dead.
 
 }
 
