@@ -165,16 +165,16 @@ sub snap_status {
 
   # Get snapraid version
   my ( $output, $exitCode ) = snap_run( opt => '--version', cmd => '' );
-  ($opt{snapVersion}) = $output =~ m/snapraid\s+v(\d+.\d+)/;
+  ( $opt{snapVersion} ) = $output =~ m/snapraid\s+v(\d+.\d+)/;
 
   # Run snapraid status
   ( $output, $exitCode ) = snap_run( opt => '', cmd => 'status' );
 
   # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected", 1); }
+  if ( $output !~ m/No\s+error\s+detected/ ) { error_die( 'Critical error: Status shows errors detected', 1 ); }
 
   # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die("Aborting: Sync currently in progress", 2); }
+  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die( 'Aborting: Sync currently in progress', 2 ); }
 
   # Check for zero sub-second timestamps and correct.
   if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
@@ -187,14 +187,14 @@ sub snap_status {
 
       # Run snapraid touch
       my ( $touch, $exitCode ) = snap_run( opt => '', cmd => 'touch' );
-      foreach ( split(/\n/, $touch) ) {
+      foreach my $line ( split(/\n/, $touch) ) {
 
         # Log files where time stamps where changed.
-        if (m/touch/) {
+        if ( $line =~ m/touch/ ) {
 
           # Remove word 'touch' before logging
-          s/touch\s//;
-          logit( "Zero sub-second timestamp reset on :- $_", 4 );
+          $line =~ s/touch\s//;
+          logit( "Zero sub-second timestamp reset on :- $line", 4 );
         }
       }
       logit( "$timeStamps files with zero sub-second timestamps, Snapraid touch command was run", 3 );
@@ -207,13 +207,14 @@ sub snap_status {
   }
   else {
     logit( 'No zero sub-second timestamps detected', 3 );
+    messageit( 'No ZSS timestamps detected', 3 );
   }
 
   # Get number of days since last scrub
-  ($opt{scrubNewDays}) = $output =~ m/the\s+newest\s+(\d+)./;
+  ( $opt{scrubNewDays} ) = $output =~ m/the\s+newest\s+(\d+)./;
 
   # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
-  ($opt{scrubOldDays}) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
+  ( $opt{scrubOldDays} ) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
 
   return 1;
 }
@@ -249,13 +250,13 @@ sub snap_diff {
   }
 
   # Missing values?
-  if ($missingValues) { error_die('Aborting: Values missing from snapraid diff', 2); }
+  if ( $missingValues ) { error_die('Aborting: Values missing from snapraid diff', 2); }
 
   # Sync needed?
   $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
   
   # Log diff output
-  foreach my $key ( sort( keys %diffHash ) ) {
+  foreach my $key ( sort(keys %diffHash) ) {
     $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " ";
   }
   logit( $diffLogTxt, 3 );
@@ -278,10 +279,10 @@ sub snap_sync {
   my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'sync' );
 
   # Process output
-  foreach ( split(/\n/, $output) ) {
+  foreach my $line ( split(/\n/, $output) ) {
 
     # Match for excluded files
-    if (m/Excluding\s+file/) {
+    if ( $line =~ m/Excluding\s+file/ ) {
       $excludedCount++;
     }
     else {
@@ -289,10 +290,10 @@ sub snap_sync {
     }
 
     # Get size of data processed
-    if (m/completed/) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
+    if ( $line =~ m/completed/ ) { ( $dataProcessed ) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
 
     # Was it a success?
-    if (m/Everything\s+OK/) { $opt{syncSuccess} = 1; }
+    if ( $line =~ m/Everything\s+OK/ ) { $opt{syncSuccess} = 1; }
 
   }
 
@@ -300,11 +301,11 @@ sub snap_sync {
 
     # Log details from sync.
     logit( "Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3 );
-    messageit( "Snapraid sync comp: $dataProcessed MB", 3);
+    messageit( "Snapraid sync comp: $dataProcessed MB", 3 );
   }
   else {
     # Stop script.
-    error_die("Aborting: Sync failed! - Aborting\n$fullLog", 2);    # todo
+    error_die( "Aborting: Sync failed! - Aborting\n$fullLog", 2 );
   }
 
   # New in snapraid. Verify new data from sync.
@@ -313,7 +314,7 @@ sub snap_sync {
     # Check its a compatible version of snapraid.
     if ( $opt{snapVersion} >= 9.0 ) {
       logit( 'ScrubNew option set. Scrubing lastest sync data', 3 );
-      messageit( "Scrubbing latest sync data", 3);
+      messageit( "Scrubbing latest sync data", 3 );
       snap_scrub( plan => 'new', age => '' );
     }
     else {
@@ -340,7 +341,7 @@ sub snap_scrub {
   my ( $output, $exitCode ) = snap_run( opt => "$cmdArgs{plan} $cmdArgs{age}", cmd => 'scrub' );
 
   #Get size of data processed
-  if ( $output =~ m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
+  if ( $output =~ m/completed/ ) { ( $dataProcessed ) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
 
   # Was it a success?
   if ( $output =~ m/Everything\s+OK/ ) {
@@ -366,14 +367,14 @@ sub snap_smart { #TODO: Use run dir to log data from last run
   my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'smart' );
 
   # Process Output
-  foreach ( split(/\n/, $output) ) {
+  foreach my $line ( split(/\n/, $output) ) {
 
     # Match snapraid log for disk info
     # Todo: Not happy with this. Works fine but messy and unreadble... To re-visit
-    if (m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/) {
+    if ( $line =~ m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/ ) {
 
       # Get params
-      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
+      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
       $fp = sprintf( "%02d", $fp );
       logit( "Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 3 );
 
@@ -387,10 +388,10 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       if ( $error >= $opt{smartDiskErrorsWarn} ) { logit( "Warning: Device:- $device Serial:- $serial : Errors exceeds limit set in config!", 2); }
 
     }
-    elsif (m/next\s+year\s+is/) {
+    elsif ( $line =~ m/next\s+year\s+is/ ) {
 
       # Get FP for array
-      my ($arrayFail) = m/next\s+year\s+is\s+(\d+)%/;
+      my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
       logit( "Calculated chance of at least one drive failing in the next year is $arrayFail%", 3 );
 
       # Warn if Fail Percentage for Array exceeds limit sit in config
@@ -435,7 +436,7 @@ sub snap_pool {
     my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'pool' );
 
     # Get number of links created
-    my ($links) = $output =~ m/(\d+)\s+links/;
+    my ( $links ) = $output =~ m/(\d+)\s+links/;
     logit( "Pool command run and $links links created in $conf{pool}", 3 );
   }
   return 1;
@@ -484,7 +485,7 @@ sub snap_run {
       # Abort script and request user to investigate if critical call
       if ( $cmdArgs{cmd} =~ /sync|scrub|status|diff/ ) {
         logit( "Critical error. stderr file size: $stderrStat[7] -- Exit code: $exitCode", 1 );
-        error_die("Aborting: Snapraid cmd reports errors. Please check snapraid stderr file:- $stderrFile", 2);  
+        error_die("Aborting: Snapraid cmd reports errors. Please check snapraid stderr file:- $stderrFile", 2 );  
       } 
       else { 
         # Logit for investigation
@@ -506,7 +507,7 @@ sub snap_run {
     }
   }
   else {
-    error_die("Aborting: Unable to read stndout file:- $stdoutFile - Please check $opt{snapRaidTmpLocation} is writable", 2);
+    error_die( "Aborting: Unable to read stndout file:- $stdoutFile - Please check $opt{snapRaidTmpLocation} is writable", 2 );
   }
 
   return 1;
@@ -1036,13 +1037,13 @@ sub debug_log {
 
   # Debug -> Log Config!
   logit( '-------- Config --------', 5 );
-  foreach my $confKey ( sort( keys %conf ) ) {
-    if ( ref( $conf{$confKey} ) eq "HASH" ) {
+  foreach my $confKey ( sort(keys %conf) ) {
+    if ( ref($conf{$confKey}) eq "HASH" ) {
       foreach my $diskKey ( keys %{ $conf{$confKey} } ) {
         logit( "Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5 );
       }
     }
-    elsif ( ref( $conf{$confKey} ) eq "ARRAY" ) {
+    elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
       for ( my $i = 0 ; $i <= $#{ $conf{$confKey} } ; $i++ ) {
         logit( "Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5 );
       }
@@ -1064,7 +1065,7 @@ sub debug_log {
 sub error_die {
 
   # Get message (list context gets first item in array only)
-  my ($message, $level) = @_;
+  my ( $message, $level ) = @_;
 
   # if not passed set to 2
   $level = $level ? $level : 2;
