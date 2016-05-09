@@ -613,17 +613,18 @@ sub script_comp {
   my ( $messageTitle, $poMessagePriority );
   
   if ( $scriptMessage =~ m/Critical/ ){
-    $messageTitle = 'Critical - snapPERL Message';
+    $messageTitle = 'Critical ';
     $poMessagePriority = $opt{pushCriticalPriority};    
   }
   elsif ( $scriptMessage =~ m/Warning/ ) {
-    $messageTitle = 'Warning - snapPERL Message';
+    $messageTitle = 'Warning ';
     $poMessagePriority = $opt{pushWarningPriority};  
   }
   else {
-    $messageTitle = 'snapPERL Message';
     $poMessagePriority = $opt{pushDefaultPriority};    
   }
+  
+  $messageTitle .= $messageTitle . $opt{hostname} . ' snapPERL';
   
   send_message(       
     poPriority  => $poMessagePriority,
@@ -732,7 +733,7 @@ sub send_message {
     }
 
     # Add default title if needed
-    if ( !defined $optHash{poTitle} ) { $optHash{poTitle} = 'snapPERL Message'; }
+    if ( !defined $optHash{poTitle} ) { $optHash{poTitle} = $opt{hostname} . ' snapPERL'; }
 
     # Priority must be between -2 and 2
     if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
