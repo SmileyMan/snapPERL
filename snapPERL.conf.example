@@ -1,7 +1,7 @@
 # Sub in snapPERL.pl is called to build option hash on this config file. Makes it more readable 
 # (1. Only use = when entering options for hash) (2. Every option should be followed with a comment)
 # All white space, empty lines, lines without an = in and lines starting with # are ignored when parsed
-# Everything is optional and does not need changing for script to run. Items marked with a * point to normal default location
+# Northing needs changing for script to run on normal snapraid install. Items marked with a * point to normal default location
 
 ## Email Options (Optional)
 #
@@ -48,8 +48,9 @@ useScrubNew=1                                                 #Scrub new data fr
 resetTimeStamps=1                                             #Use touch command to reset sub-second time stamps (Snapraid 10.0+)
   
 ## Smart options (Defaults will work fine for most people)
+## You must have smartmontools installed - sudo apt-get install smartmontools
 #
-smartLog=1                                                    #Check and log Smart data. 
+smartLog=0                                                    #Check and log Smart data. 
 smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings
 smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
 smartMaxDriveTemp=50                                          #Max temp before warnings issued
