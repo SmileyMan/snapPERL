@@ -32,6 +32,20 @@ our $VERSION = 0.2.0;
 
 ############################## Script only from here ########################################
 
+# Get os name for perl inbuilt varible
+my $osName = $^O;
+my $slashType;
+
+# Configure for os
+if ( $osName eq 'linux' or $osName eq 'freebsd' ) {
+  # Extend path for smartctl run by snapraid.exe
+  local $ENV{PATH} = "$ENV{PATH}:/usr/sbin";
+  $slashType = '/';
+}
+elsif ( $osName eq 'MSWin32' ) {
+#  $slashType = '\';
+}
+
 # Get script absolute location
 my $absLocation = File::Spec->rel2abs(__FILE__);
 my ( $scriptPath, $scriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
@@ -53,9 +67,6 @@ my ( %diffHash, %opt, %conf, %customCmds );
 
 # Hold value of lowest LogLevel reached
 my $minLogLevel = 5;
-
-# Future windows compat temp var (windows compat planned for v0.5)
-my $slashType = '/';
 
 #-------- Script Start --------#
 
