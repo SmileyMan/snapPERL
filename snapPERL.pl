@@ -959,9 +959,13 @@ sub write_log {
   # Write log to file
   my $logOutFile = shift;
   
-  open my $fh, '>', $logOutFile or logit( "Warning: Unable to write $logOutFile . Please check config", 2);
-  say {$fh} $scriptLog;
-  close $fh;
+  if ( open my $fh, '>', $logOutFile ) {
+    say {$fh} $scriptLog;
+    close $fh;
+  }
+  else {
+    logit( "Warning: Unable to write $logOutFile . Please check config", 2);
+  }
 
   return 1;
 }
