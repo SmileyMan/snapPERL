@@ -71,7 +71,7 @@ else
 fi
 
 echo ""
-echo "INSTALL COMPLETED. snapPERL Script should be run as ROOT so snapraid.exe is called a ROOT"
+echo "INSTALL COMPLETED. snapPERL Script should be run as ROOT so snapraid.exe is called as ROOT"
 echo ""
 echo "Please now edit snapPERL.conf and custom-cmds to your needs"
 echo ""

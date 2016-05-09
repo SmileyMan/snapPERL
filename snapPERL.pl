@@ -109,7 +109,7 @@ if ( $opt{scrubNewDays} >= $opt{scrubDays} or $opt{scrubOldDays} >= $opt{scrubOl
   if ($opt{syncSuccess}) {
     logit( "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 3 );
     messageit ( 'Running scrub', 3 );
-    snap_scrub( "-p $opt{scrubPercentage}", "-o $opt{scrubAge}" );
+    snap_scrub( plan => "$opt{scrubPercentage}", age => "$opt{scrubAge}" );
   }
   else {
     logit( 'Sync was not run. Scrub only performed after successful sync.', 3 );
@@ -160,14 +160,15 @@ script_comp();
 # sub snap_status()
 # Calls snapraid status and does a few checks. Sets days since last scrub. Corrects sub second timestamps when detected.
 # usage snap_status();
+# return void
 sub snap_status {
 
   # Get snapraid version
-  my ( $output, $exitCode ) = snap_run('--version');
+  my ( $output, $exitCode ) = snap_run( opt => '--version', cmd => '' );
   ($opt{snapVersion}) = $output =~ m/snapraid\s+v(\d+.\d+)/;
 
   # Run snapraid status
-  ( $output, $exitCode ) = snap_run('status');
+  ( $output, $exitCode ) = snap_run( opt => '', cmd => 'status' );
 
   # Critical error. Status shows errors detected.
   if ( $output !~ m/No\s+error\s+detected/ ) { error_die("Critical error: Status shows errors detected", 1); }
@@ -185,7 +186,7 @@ sub snap_status {
     if ( $opt{resetTimeStamps} && $opt{snapVersion} >= 10.0 ) {
 
       # Run snapraid touch
-      my ( $touch, $exitCode ) = snap_run('touch');
+      my ( $touch, $exitCode ) = snap_run( opt => '', cmd => 'touch' );
       foreach ( split(/\n/, $touch) ) {
 
         # Log files where time stamps where changed.
@@ -221,13 +222,14 @@ sub snap_status {
 # sub snap_diff();
 # Runs diff command and scrapes values into a hash and sets 'sync' value to true if differences detected.
 # usage snap_diff();
+# return void
 sub snap_diff {
 
   # Lexicals
   my ( $diffLogTxt, $missingValues );
 
   # Run snapraid diff
-  my ( $output, $exitCode ) = snap_run('diff');
+  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'diff' );
 
   # Assign values to hash
   ( $diffHash{equal} )    = $output =~ m/(\d+)\s+equal/;
@@ -265,6 +267,7 @@ sub snap_diff {
 # sub snap_sync
 # Runs a sync command and logs details
 # usage snap_sync();
+# return void
 sub snap_sync {
 
   # Lexicals
@@ -272,7 +275,7 @@ sub snap_sync {
   my ( $dataProcessed, $fullLog );
 
   # Run snapraid sync command
-  my ( $output, $exitCode ) = snap_run('sync');
+  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'sync' );
 
   # Process output
   foreach ( split(/\n/, $output) ) {
@@ -311,7 +314,7 @@ sub snap_sync {
     if ( $opt{snapVersion} >= 9.0 ) {
       logit( 'ScrubNew option set. Scrubing lastest sync data', 3 );
       messageit( "Scrubbing latest sync data", 3);
-      snap_scrub('-p new');
+      snap_scrub( plan => 'new', age => '' );
     }
     else {
       logit( 'Warning: ScrubNew is set but snapraid version must be 9.0 or higher!', 2 );
@@ -323,31 +326,31 @@ sub snap_sync {
 ##
 # sub snap_scrub
 # Perform a scrub on array
-# usage snap_scrub('Plan to use staring with -p', 'Min age to scrub starting with -o');
+# usage snap_scrub( plan => 'plan', age => 'age' );
+# return void
 sub snap_scrub {
 
   # Grab first to elements of passed array.
-  my $plan = shift;
-  my $age = shift // '';
-  my ( $dataProcessed, $success );
+  my %cmdArgs = @_;
+  my $dataProcessed;
+  
+  if ( $cmdArgs{plan} ) { $cmdArgs{plan} = "-p $cmdArgs{plan}"; }
+  if ( $cmdArgs{age} )  { $cmdArgs{age}  = "-o $cmdArgs{age}";  }
 
-  my ( $output, $exitCode ) = snap_run( $plan, $age, 'scrub' );
+  my ( $output, $exitCode ) = snap_run( opt => "$cmdArgs{plan} $cmdArgs{age}", cmd => 'scrub' );
 
   #Get size of data processed
   if ( $output =~ m/completed/ ) { ($dataProcessed) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
 
   # Was it a success?
-  if ( $output =~ m/Everything\s+OK/ ) { $success = 1; }
-
-  if ($success) {
-
+  if ( $output =~ m/Everything\s+OK/ ) {
     # Log details from scrub.
     logit( "Snapraid scrub completed: $dataProcessed MB processed", 3 );
     messageit( "Snapraid scrub comp: $dataProcessed MB", 3 );
   }
   else {
     # Stop script.
-    error_die("Aborting: Scrub failed!\n$output", 2);    # todo
+    error_die("Aborting: Scrub failed!\n$output", 2);   
   }
   return 1;
 }
@@ -356,10 +359,11 @@ sub snap_scrub {
 # sub snap_smart
 # Log smart details and warn if requited
 # usage snap_smart();
+# return void
 sub snap_smart { #TODO: Use run dir to log data from last run
 
   # Run snapraid smart
-  my ( $output, $exitCode ) = snap_run('smart');
+  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'smart' );
 
   # Process Output
   foreach ( split(/\n/, $output) ) {
@@ -401,10 +405,11 @@ sub snap_smart { #TODO: Use run dir to log data from last run
 # sub snap_spindown
 # Spin down disks (Plan to add options for selecting which disks to spin down)
 # usage snap_spindown();
+# return void
 sub snap_spindown {
 
   # Run snapraid down
-  my ( $output, $exitCode ) = snap_run('down');
+  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'down' );
 
   #Log output
   foreach my $disk ( split(/\n/, $output) ) {
@@ -420,13 +425,14 @@ sub snap_spindown {
 # sub snap_pool
 # Creat pool if valid config option exists
 # usage snap_pool();
+# return void
 sub snap_pool {
 
   # Check for pool entry in snapraid config
   if ( $conf{pool} ) {
 
     # Run snapraid pool command
-    my ( $output, $exitCode ) = snap_run('pool');
+    my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'pool' );
 
     # Get number of links created
     my ($links) = $output =~ m/(\d+)\s+links/;
@@ -438,18 +444,18 @@ sub snap_pool {
 ##
 # sub snap_run
 # Run a snapraid command
-# usage snap_run(command);
-# returns stdout, exitcode
+# usage snap_run( opt => 'options', cmd => 'command', stderr => '0|1' );
+# returns stdout, exitcode, *opt stderr
 sub snap_run {
 
   # Get passed args
-  my @cmdArgs    = @_;
+  my %cmdArgs    = @_;
   my $stderrFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stderr.tmp';
   my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stdout.tmp';
 
   # Build command
-  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs 1\>$stdoutFile 2\>$stderrFile";
-  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v @cmdArgs";
+  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
+  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd}";
 
   # Log command to be run
   logit( "Running: $snapCmdLog", 4 );
@@ -457,27 +463,50 @@ sub snap_run {
   # Run command
   my $exitCode = system($snapCmd);
 
+  # Slurp in stndout/stderr from last call
   my $cmdStderr = slurp_file($stderrFile);
   my $cmdStdout = slurp_file($stdoutFile);
+  
+  if ( defined $cmdStderr ) {
 
-  # Get file size of stderr file
-  my @stderrStat = stat $stderrFile;
+    # Get file size of stderr file
+    my @stderrStat = stat $stderrFile;
 
-  # stderr file is NOT empty indicating snapraid wrote to stderr
-  if ( $stderrStat[7] > 0 ) {
-      # abort script and request user to investigate
-    if ( grep { $_ =~ /sync|scrub|status|diff/ } @cmdArgs ) {
-      logit( "Critical error. stderr file size: $stderrStat[7] -- Exit code: $exitCode", 1 );
-      error_die("Aborting: Snapraid cmd reports errors. Please check snapraid stderr file:- $stderrFile", 2);  
-    } 
-    else { 
-      #TODO: Don't abort for smart|pool|spindown etc. But log error
-    };
+    # stderr file is NOT empty indicating snapraid wrote to stderr
+    if ( $stderrStat[7] > 0 ) {
+      # Write it to log
+      my $stamp = time_stamp();
+      my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $stamp . '.log';
+      if ( !write_log( $logOutFile ) ) {
+        logit( "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 2 );
+      }
+      
+      # Abort script and request user to investigate if critical call
+      if ( $cmdArgs{cmd} =~ /sync|scrub|status|diff/ ) {
+        logit( "Critical error. stderr file size: $stderrStat[7] -- Exit code: $exitCode", 1 );
+        error_die("Aborting: Snapraid cmd reports errors. Please check snapraid stderr file:- $stderrFile", 2);  
+      } 
+      else { 
+        # Logit for investigation
+        logit( "Warning: Snapraid issues with cmd: $cmdArgs{cmd} - Please see log: $logOutFile", 2);
+      }
+    }
+  }
+  else {
+    logit( "Warning: unable to read stderr file: $stderrFile - Please check $opt{snapRaidTmpLocation} is writable", 2 ); 
   }
 
-  # Pass stdout / exitcode back to caller
+  if ( defined $cmdStdout ) {
+    #Pass stdout / exitcode back to caller
+    if ( $cmdArgs{stderr} ) {
+      return ( $cmdStdout, $exitCode, $cmdStderr );
+    }
+    else {
+      return ( $cmdStdout, $exitCode );
+    }
+  }
   else {
-    return ( $cmdStdout, $exitCode );
+    error_die("Aborting: Unable to read stndout file:- $stdoutFile - Please check $opt{snapRaidTmpLocation} is writable", 2);
   }
 
   return 1;
@@ -485,8 +514,9 @@ sub snap_run {
 
 ##
 # sub parse_conf
-# Parse the snapraid conf file into a 2 dimension hash->hash/array
+# Parse the snapraid conf file into a package wide 2 dimension hash->hash/array %conf
 # usage parse_conf();
+# return void
 sub parse_conf {
 
   # Define local slurp scalar
@@ -542,8 +572,9 @@ sub parse_conf {
 
 ##
 # sub get_opt_hash
-# Build option hash from $options at start of script;
+# Build option hash from options in optionsfile into package wide hash %opt;
 # usage get_opt_hash();
+# return void
 sub get_opt_hash {
 
   my $options;
@@ -608,6 +639,7 @@ sub get_opt_hash {
 # sub script_comp
 # Called at end of script. Basic clean up tasks.
 # usage script_comp();
+# return void
 sub script_comp {
 
   # Send email if enabled
@@ -616,7 +648,9 @@ sub script_comp {
   # Write log to location in $opt{logFile}
   if ( $opt{logFile} ) { 
     my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
-    write_log($logOutFile); 
+    if ( !write_log( $logOutFile ) ) {
+      logit( "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 2 );
+    } 
   }
   
   # Send pushover message?
@@ -652,6 +686,7 @@ sub script_comp {
 # sub email_send
 # Send the scriptLog out via email;
 # usage email_send();
+# return void
 sub email_send {
 
   my $subjectAlert;
@@ -726,6 +761,7 @@ sub email_send {
 # sub send_message();
 # Sends message to various messaging API's 
 # usage send_message( %options_hash );
+# return void
 sub send_message_po {
   
   # Get passed options
@@ -783,7 +819,8 @@ sub send_message_po {
 ##
 # sub load_custom_cmds();
 # Loads custom commands from file into hash/array
-# usage load_custom_cmds());
+# usage load_custom_cmds();
+# return void
 sub load_custom_cmds {
 
   my $customCmdsIn;
@@ -817,6 +854,7 @@ sub load_custom_cmds {
 # sub custom_cmds();
 # Runs custom pre and post commands defined in custom-cmds file.
 # usage custom_cmds('pre|post');
+# return void
 sub custom_cmds {
 
   # Get type of operation
@@ -845,6 +883,7 @@ sub custom_cmds {
 # sub slurp_file();
 # Slurp the contents of a file and return a scalar
 # usage $contents = slurp_file(filename);
+# return contents of slurp or undef if failed
 sub slurp_file {
 
   # Get file to slurp
@@ -855,17 +894,21 @@ sub slurp_file {
 
   # File exists?
   if ( -e $file ) {
-    open my $fh, '<', $file or error_die("Aborting: Unable to open $file.", 2);
-    local $/ = undef;    # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
-    $slushPuppie = <$fh>;    # My favorite slurp
-    close $fh;               # Will auto close once once out of scope regardless
+    if ( open my $fh, '<', $file ) {
+      local $/ = undef;       # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
+      $slushPuppie = <$fh>;   # My favorite slurp
+      close $fh;              # Will auto close once once out of scope regardless
+    }
+    else {
+      logit( "Warning: Unable to open file: $file", 2);
+    }
   }
   else {
     # File don't exist - Send to log @ debug level
     logit( "Warning: call to slurp_file() with none existing file: $file", 5 );
   }
 
-  # Return the Slurpie
+  # Return the Slurpie (If file not read returns undef)
   return $slushPuppie;
 }
 
@@ -873,6 +916,7 @@ sub slurp_file {
 # sub time_stamp();
 # Create a timestamp for the log.
 # usage $stamp = time_stamp();
+# returns formated timestamp
 sub time_stamp {
 
   # Define month names
@@ -896,6 +940,7 @@ sub time_stamp {
 # sub logit()
 # Create a log.
 # usage logit('Text', Level);
+# return void
 sub logit {
 
   # Get text and loglevel
@@ -932,6 +977,7 @@ sub logit {
 # sub messageit()
 # Creates message to be sent via api's to Pushover/NMA/PushBullet.
 # usage messageIt('Text', Level);
+# return void
 sub messageit {
 
   # Get text and loglevel
@@ -954,6 +1000,7 @@ sub messageit {
 # sub write_log();
 # Write the logfile to disk or stdout.
 # usage write_log();
+# returns 1 if success and 0 if not
 sub write_log {
 
   # Write log to file
@@ -962,12 +1009,12 @@ sub write_log {
   if ( open my $fh, '>', $logOutFile ) {
     say {$fh} $scriptLog;
     close $fh;
+    return 1;
   }
   else {
     logit( "Warning: Unable to write $logOutFile . Please check config", 2);
-  }
-
-  return 1;
+    return 0;
+  } 
 }
 
 ##
@@ -975,6 +1022,7 @@ sub write_log {
 # Called if logLevel set to 5 (Debug).
 # Cycles over multi dimension hash created from config file.
 # usage debug_log();
+# return void
 sub debug_log {
 
   # May just use Data::Dumper for this
@@ -1012,6 +1060,7 @@ sub debug_log {
 # sub error_die()
 # Wrapper for PERL die command.
 # usage error_die("Error Text");
+# return - never gets the chance!
 sub error_die {
 
   # Get message (list context gets first item in array only)
