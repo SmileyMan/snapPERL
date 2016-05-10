@@ -23,10 +23,11 @@ use strict;
 use warnings;
 
 # Modules
-use Carp qw(croak);  # To replace die calls.. Not yet implemented
-use Module::Load;    # Perl core module for on demand loading of optional modules
-use File::Spec;      # Used to read absolute path
-use LWP::UserAgent;  # Send Post/Get (For Pushover support)
+use Carp qw(croak);   # Croak to abort script
+use Module::Load;     # Perl core module for on demand loading of optional modules
+use File::Spec;       # Used to read absolute path
+use LWP::UserAgent;   # Send Post/Get (For messaging support)
+use JSON::PP;         # Encode data to JSON for storage
 
 our $VERSION = 0.2.0;
 
@@ -436,6 +437,9 @@ sub snap_smart { #TODO: Use run dir to log data from last run
   # Run snapraid smart
   my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'smart' );
 
+  # Holds disk data to be written out
+  my %smartDisk;
+
   # Process Output
   foreach my $line ( split(/\n/, $output) ) {
 
@@ -446,6 +450,12 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       # Get params
       my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
       $fp = sprintf( "%02d", $fp );
+      
+      # Add data to hash
+      $smartDisk{$serial}->{temp}   = $temp;
+      $smartDisk{$serial}->{error}  = $error;
+      $smartDisk{$serial}->{fp}     = $fp;
+      
       logit(  text    => "Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 
               message => '',
               level   => 3,
@@ -494,6 +504,16 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       }
     }
   }
+  
+  # Encode smartdata to json
+  my $smartDiskOut = encode_json \%smartDisk;
+  
+  # Write out to run directory (Used to chack for changes since last run)
+  my $jsonSmartOut = $opt{runFileLocation} . $slashType .  'smartout.json';
+  my $fileWritten = write_file( filename  => $jsonSmartOut,
+                                contents  => \$smartDiskOut,
+                               );
+                                
   return;
 }
 
@@ -591,10 +611,15 @@ sub snap_run {
 
     # stderr file is NOT empty indicating snapraid wrote to stderr
     if ( $stderrStat[7] > 0 ) {
+
       # Write it to log
-      my $stamp = time_stamp();
       my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $cmdArgs{cmd} . '.log';
-      if ( !write_log( $logOutFile, \$cmdStderr ) ) {
+      my $fileWritten = write_file( filename  => $logOutFile,
+                                    contents  => \$cmdStderr,
+                                    UTF8      => 0,
+                                   );
+
+      if ( !$fileWritten ) {
         logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 
                 message => "Warn: Unable to write log Stderr",
                 level   => 2,
@@ -704,6 +729,16 @@ sub parse_conf {
       }
     }
   }
+  
+  # Encode snapraid conf to json
+  my $confOut = encode_json \%conf;
+  
+  # Write out to run directory (Used to chack for changes in conf)
+  my $jsonConfOut = $opt{runFileLocation} . $slashType .  'confout.json';
+  my $fileWritten = write_file( filename  => $jsonConfOut,
+                                contents  => \$confOut,
+                               );
+  
   return;
 }
 
@@ -785,7 +820,12 @@ sub script_comp {
   # Write log to location in $opt{logFile}
   if ( $opt{logFile} ) { 
     my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
-    if ( !write_log( $logOutFile, \$scriptLog ) ) {
+    my $fileWritten = write_file( filename  => $logOutFile,
+                                  contents  => \$scriptLog,
+                                  UTF8      => 0,
+                                 );
+    
+    if ( !$fileWritten ) {
       logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable",
               message => "Warn: Unable to write log: $logOutFile",
               level   => 2,
@@ -1048,7 +1088,7 @@ sub slurp_file {
 
   # File exists?
   if ( -e $file ) {
-    if ( open my $fh, '<', $file ) {
+    if ( open my $fh, '<:encoding(UTF-8)', $file ) {
       local $/ = undef;       # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
       $slushPuppie = <$fh>;   # My favorite slurp
       close $fh;              # Will auto close once once out of scope regardless
@@ -1162,24 +1202,25 @@ sub logit {
 
 
 ##
-# sub write_log();
-# Write the logfile to disk or stdout.
-# usage write_log();
+# sub write_file();
+# Write the file to disk.
+# usage write_file( filename  => '',
+#                   contents  => \scalar-ref,
+#                  );
 # returns 1 if success and 0 if not
-sub write_log {
+sub write_file {
 
   # Write log to file
-  my $logOutFile  = shift;
-  my $logOut      = shift;
+  my %fileParams = @_;
   
-  if ( open my $fh, '>', $logOutFile ) {
-    say {$fh} ${$logOut};
+  if ( open my $fh, '>:encoding(UTF-8)', $fileParams{filename} ) {
+    say {$fh} ${ $fileParams{contents} };
     close $fh;
     return 1;
   }
   else {
-    logit(  text    => "Warning: Unable to write $logOutFile . Please check config",
-            message => "Warn: Unable to write $logOutFile",
+    logit(  text    => "Warning: Unable to write $fileParams{filename} . Please check config",
+            message => "Warn: Unable to write $fileParams{filename}",
             level   => 2,
           );
     return 0;
