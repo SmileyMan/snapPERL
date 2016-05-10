@@ -38,11 +38,9 @@ my $slashType;
 
 # Configure for Win32 / Unix bases
 if ( $osName eq 'MSWin32' ) {
-#  $slashType = '\';
+  $slashType = '\\';
 }
 else {
-  # Unix base - Extend path for smartctl run by snapraid.exe
-  local $ENV{PATH} = "$ENV{PATH}:/usr/sbin";
   $slashType = '/';
 }
 
@@ -461,8 +459,17 @@ sub snap_run {
   # Log command to be run
   logit( "Running: $snapCmdLog", 4 );
 
-  # Run command
-  my $exitCode = system($snapCmd);
+  my $exitCode;
+  # OS Base?
+  if ( $osName eq 'MSWin32' ) {
+    # TODO
+  }
+  else {
+    # Expand path for snapraid.exe call to smartctl
+    local $ENV{PATH} = "$ENV{PATH}:/usr/sbin"; 
+    # Run command
+    $exitCode = system($snapCmd);
+  }
 
   # Slurp in stndout/stderr from last call
   my $cmdStderr = slurp_file($stderrFile);
@@ -478,7 +485,7 @@ sub snap_run {
       # Write it to log
       my $stamp = time_stamp();
       my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $stamp . '.log';
-      if ( !write_log( $logOutFile ) ) {
+      if ( !write_log( $logOutFile, \$cmdStderr ) ) {
         logit( "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 2 );
       }
       
@@ -649,7 +656,7 @@ sub script_comp {
   # Write log to location in $opt{logFile}
   if ( $opt{logFile} ) { 
     my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
-    if ( !write_log( $logOutFile ) ) {
+    if ( !write_log( $logOutFile, \$scriptLog ) ) {
       logit( "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 2 );
     } 
   }
@@ -1005,10 +1012,11 @@ sub messageit {
 sub write_log {
 
   # Write log to file
-  my $logOutFile = shift;
+  my $logOutFile  = shift;
+  my $logOut      = shift;
   
   if ( open my $fh, '>', $logOutFile ) {
-    say {$fh} $scriptLog;
+    say {$fh} ${$logOut};
     close $fh;
     return 1;
   }
