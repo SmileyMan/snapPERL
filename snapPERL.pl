@@ -23,7 +23,7 @@ use strict;
 use warnings;
 
 # Modules
-use Carp;            # To replace die calls.. Not yet implemented
+use Carp qw(croak);  # To replace die calls.. Not yet implemented
 use Module::Load;    # Perl core module for on demand loading of optional modules
 use File::Spec;      # Used to read absolute path
 use LWP::UserAgent;  # Send Post/Get (For Pushover support)
@@ -50,6 +50,7 @@ my ( $scriptPath, $scriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
 
 # Define options file
 my $optionsFile = $scriptPath . 'snapPERL.conf';
+
 # Defind custom commands file
 my $customCmdsFile = $scriptPath . 'custom-cmds';
 
@@ -62,7 +63,10 @@ my ( %diffHash, %opt, %conf, %customCmds );
 # Build options hash
 get_opt_hash();
 
-logit( 'Script Started', 3 );
+logit(  text    => 'Script Started', 
+        message => '',
+        level   => 3,
+      );
 
 # using optional feature 'custom commands'?
 if ( $opt{useCustomCmds} ) {
@@ -86,17 +90,25 @@ if ( $diffHash{sync} ) {
 
   # Check set limits
   if ( $diffHash{removed} <= $opt{deletedFiles} && $diffHash{updated} <= $opt{changedFiles} ) {
-    logit( 'There are differences. Sync running', 3 );
-    messageit( 'There are differences. Sync running', 3 );
+    logit(  text    => 'There are differences. Sync running', 
+            message => 'Sync running',
+            level   => 3,
+          );
     snap_sync();
+
   }
   else {
-    logit( 'Warning: Deleted or Changed files exceed limits set. Sync not completed', 2 );
+    logit(  text    => 'Warning: Deleted or Changed files exceed limits set. Sync not completed', 
+            message => 'Warn: Deleted / Changed files exceed limits',
+            level   => 2,
+          );  
   }
 }
 else {
-  logit( 'No differences. Sync not needed', 3 );
-  messageit( 'No differences', 3 );
+  logit(  text    => 'No differences. Sync not needed', 
+          message => 'No differences',
+          level   => 3,
+        );
 }
 
 # Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will allways be 0.
@@ -105,35 +117,40 @@ if ( $opt{scrubNewDays} >= $opt{scrubDays} or $opt{scrubOldDays} >= $opt{scrubOl
 
   # Do not scrub un sync'ed array!
   if ($opt{syncSuccess}) {
-    logit( "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 3 );
-    messageit ( 'Running scrub', 3 );
+    logit(  text    => "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 
+            message => "Running scrub - Last: $opt{scrubNewDays} - Oldest: $opt{scrubOldDays}",
+            level   => 3,
+          );
     snap_scrub( plan => "$opt{scrubPercentage}", age => "$opt{scrubAge}" );
+  
   }
   else {
-    logit( 'Sync was not run. Scrub only performed after successful sync.', 3 );
+    logit(  text    => 'Sync was not run. Scrub only performed after successful sync', 
+            message => 'No sync so Scrub not performed}',
+            level   => 3,
+          );  
   }
 }
 else {
-  logit( "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 3 );
-  messageit ( 'No post sync scrub needed', 3 );
+  logit(  text    => "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}",
+          message => 'No post sync scrub needed',
+          level   => 3,
+        );
 }
 
 # Create symbolic link pool
 if ( $opt{pool} ) { 
   snap_pool(); 
-  messageit ( 'Pool comamnd run', 3 );
 }
 
 # Log smart details?
 if ( $opt{smartLog} ) { 
   snap_smart(); 
-  messageit ( 'Smart command run', 3 );
 }
 
 # Spindown?
 if ( $opt{spinDown} ) { 
   snap_spindown(); 
-  messageit ( 'Array spundown', 3 );
 }
 
 if ( $opt{useCustomCmds} ) {
@@ -142,8 +159,11 @@ if ( $opt{useCustomCmds} ) {
   custom_cmds('post');
 }
 
-logit( 'Script Completed', 3 );
-
+logit(  text    => 'Script Completed',
+        message => 'Script Completed',
+        level   => 3,
+      );
+          
 # Add debug information to log
 if ( $opt{logLevel} >= 5 ) { debug_log(); }
 
@@ -169,10 +189,22 @@ sub snap_status {
   ( $output, $exitCode ) = snap_run( opt => '', cmd => 'status' );
 
   # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+error\s+detected/ ) { error_die( 'Critical error: Status shows errors detected', 1 ); }
+  if ( $output !~ m/No\s+error\s+detected/ ) { 
+    logit(  text    => 'Critical: Status shows errors detected',
+            message => 'Crit: Status shows errors detected',
+            level   => 1,
+            abort   => 1,
+          );
+  }
 
   # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { error_die( 'Aborting: Sync currently in progress', 2 ); }
+  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { 
+    logit(  text    => 'Abort: Sync currently in progress',
+            message => 'Abort: Sync currently in progress',
+            level   => 2,
+            abort   => 1,
+          ); 
+  }
 
   # Check for zero sub-second timestamps and correct.
   if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
@@ -192,20 +224,29 @@ sub snap_status {
 
           # Remove word 'touch' before logging
           $line =~ s/touch\s//;
-          logit( "Zero sub-second timestamp reset on :- $line", 4 );
+          logit(  text    => "Zero sub-second timestamp reset on :- $line",
+                  message => '',
+                  level   => 4,
+          );
         }
       }
-      logit( "$timeStamps files with zero sub-second timestamps, Snapraid touch command was run", 3 );
-      messageit( "ZSS Timestamps reset on $timeStamps files", 3 );
+      logit(  text    => "$timeStamps files with zero sub-second timestamps, Snapraid touch command was run",
+              message => "ZSS Timestamps reset on $timeStamps files",
+              level   => 3,
+            );
     }
     else {
-      logit( "$timeStamps files with zero sub-second timestamps, No action taken", 3 );
-      messageit( "$timeStamps files with ZSS timestamps", 3 );
+      logit(  text    => "$timeStamps files with zero sub-second timestamps, No action taken",
+              message => "$timeStamps files with ZSS timestamps",
+              level   => 3,
+            );
     }
   }
   else {
-    logit( 'No zero sub-second timestamps detected', 3 );
-    messageit( 'No ZSS timestamps detected', 3 );
+    logit(  text    => 'No zero sub-second timestamps detected',
+            message => 'No ZSS timestamps detected',
+            level   => 3,
+          );
   }
 
   # Get number of days since last scrub
@@ -214,7 +255,7 @@ sub snap_status {
   # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
   ( $opt{scrubOldDays} ) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
 
-  return 1;
+  return;
 }
 
 ##
@@ -242,13 +283,23 @@ sub snap_diff {
   # If any of the diff values missing stop script.
   foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
     if ( !defined $diffHash{$diffKey} ) {
-      logit( "Warning: Missing value \'$diffKey\' during diff command!", 2 );
+      logit(  text    => "Warning: Missing value \'$diffKey\' during diff command!",
+              message => '',
+              level   => 2,
+            );
       $missingValues = 1;
+      
     }
   }
 
   # Missing values?
-  if ( $missingValues ) { error_die('Aborting: Values missing from snapraid diff', 2); }
+  if ( $missingValues ) { 
+    logit(  text    => 'Abort: Values missing from snapraid diff',
+            message => 'Abort: Diff values missing',
+            level   => 2,
+            abort   => 1,
+          );
+  }
 
   # Sync needed?
   $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
@@ -257,9 +308,12 @@ sub snap_diff {
   foreach my $key ( sort(keys %diffHash) ) {
     $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " ";
   }
-  logit( $diffLogTxt, 3 );
+  logit(  text    => $diffLogTxt,
+          message => '',
+          level   => 3,
+        );
 
-  return 1;
+  return;
 }
 
 ##
@@ -284,7 +338,7 @@ sub snap_sync {
       $excludedCount++;
     }
     else {
-      $fullLog .= $_ . "\n";
+      $fullLog .= $line . "\n";
     }
 
     # Get size of data processed
@@ -298,12 +352,18 @@ sub snap_sync {
   if ( $opt{syncSuccess} ) {
 
     # Log details from sync.
-    logit( "Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 3 );
-    messageit( "Snapraid sync comp: $dataProcessed MB", 3 );
+    logit(  text    => "Snapraid sync completed: $dataProcessed MB processed and $excludedCount files excluded", 
+            message => "Snapraid sync comp: $dataProcessed MB",
+            level   => 3,
+          );
   }
   else {
     # Stop script.
-    error_die( "Aborting: Sync failed! - Aborting\n$fullLog", 2 );
+    logit(  text    => 'Abort: Sync failed!\n$fullLog',
+            message => 'Abort: Sync failed',
+            level   => 2,
+            abort   => 1,
+          );
   }
 
   # New in snapraid. Verify new data from sync.
@@ -311,15 +371,21 @@ sub snap_sync {
 
     # Check its a compatible version of snapraid.
     if ( $opt{snapVersion} >= 9.0 ) {
-      logit( 'ScrubNew option set. Scrubing lastest sync data', 3 );
-      messageit( "Scrubbing latest sync data", 3 );
+      logit(  text    => 'ScrubNew option set. Scrubing lastest sync data',
+              message => 'Scrubbing latest sync data',
+              level   => 3,
+          );
       snap_scrub( plan => 'new', age => '' );
+      
     }
     else {
-      logit( 'Warning: ScrubNew is set but snapraid version must be 9.0 or higher!', 2 );
+      logit(  text    => 'Warning: ScrubNew is set but snapraid version must be 9.0 or higher!',
+              message => 'Warn: ScrubNew -> Snapraid 9.0+',
+              level   => 2,
+            );
     }
   }
-  return 1;
+  return;
 }
 
 ##
@@ -344,14 +410,20 @@ sub snap_scrub {
   # Was it a success?
   if ( $output =~ m/Everything\s+OK/ ) {
     # Log details from scrub.
-    logit( "Snapraid scrub completed: $dataProcessed MB processed", 3 );
-    messageit( "Snapraid scrub comp: $dataProcessed MB", 3 );
+    logit(  text    => "Snapraid scrub completed: $dataProcessed MB processed",
+            message => "Snapraid scrub comp: $dataProcessed MB",
+            level   => 3,
+          );
   }
   else {
     # Stop script.
-    error_die("Aborting: Scrub failed!\n$output", 2);   
+    logit(  text    => 'Abort: Scrub failed!\n$fullLog',
+            message => 'Abort: Scrub failed!',
+            level   => 2,
+            abort   => 1,
+          ); 
   }
-  return 1;
+  return;
 }
 
 ##
@@ -374,30 +446,55 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       # Get params
       my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
       $fp = sprintf( "%02d", $fp );
-      logit( "Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 3 );
+      logit(  text    => "Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 
+              message => '',
+              level   => 3,
+          );
 
       # Warn if Fail Percentage exceeds limit sit in config
-      if ( $fp > $opt{smartDiskWarn} ) { logit( "Warning: Fail percentage for $serial has exceded warning level", 2 ); }
-
+      if ( $fp > $opt{smartDiskWarn} ) {
+        logit(  text    => "Warning: Fail percentage for $serial has exceded warning level",
+                message => 'Warn: Fail % for $device > warning level',
+                level   => 2,
+              );
+      }
+    
       # Warn for disk temp
-      if ( $temp > $opt{smartMaxDriveTemp} ) { logit( "Warning: Device:- $device Serial:- $serial : Temp exceeds limit set in config!", 2); }
+      if ( $temp > $opt{smartMaxDriveTemp} ) { 
+        logit(  text    => "Warning: Device:- $device Serial:- $serial : Temp:- $temp exceeds limit set in config!", 
+                message => "Warn: $device Temp:- $temp > warning level",
+                level   => 2,
+              );
+      }
 
       # Warn for disk errors
-      if ( $error >= $opt{smartDiskErrorsWarn} ) { logit( "Warning: Device:- $device Serial:- $serial : Errors exceeds limit set in config!", 2); }
+      if ( $error >= $opt{smartDiskErrorsWarn} ) { 
+        logit(  text    => "Warning: Device:- $device Serial:- $serial : Errors exceeds limit set in config!", 
+                message => "Warn: $device errors > warning level",
+                level   => 2,
+             );
+      }
 
     }
     elsif ( $line =~ m/next\s+year\s+is/ ) {
 
       # Get FP for array
       my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
-      logit( "Calculated chance of at least one drive failing in the next year is $arrayFail%", 3 );
+      logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
+              message => "Drive fail withing year: $arrayFail%",
+              level   => 3,
+            );
 
       # Warn if Fail Percentage for Array exceeds limit sit in config
-      if ( $arrayFail > $opt{smartWarn} ) { logit( 'Warning: Chance of disk in array failing within the next year has exceded warning level', 2 ); }
-
+      if ( $arrayFail > $opt{smartWarn} ) {
+        logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceded warning level',
+                message => 'Warn: Drive fail withing year > warning level',
+                level   => 2,
+              );
+      }
     }
   }
-  return 1;
+  return;
 }
 
 ##
@@ -412,12 +509,18 @@ sub snap_spindown {
 
   #Log output
   foreach my $disk ( split(/\n/, $output) ) {
-    logit( $disk, 4 );
+    logit(  text    => $disk, 
+            message => '',
+            level   => 4,
+          );
   }
 
-  logit( 'Array spundown', 3 );
-
-  return 1;
+  logit(  text    => 'Array spundown', 
+          message => 'Array spundown',
+          level   => 3,
+        );
+  
+  return;
 }
 
 ##
@@ -435,9 +538,12 @@ sub snap_pool {
 
     # Get number of links created
     my ( $links ) = $output =~ m/(\d+)\s+links/;
-    logit( "Pool command run and $links links created in $conf{pool}", 3 );
+    logit(  text    => "Pool command run and $links links created in $conf{pool}", 
+            message => "Pool run and $links links created",
+            level   => 3,
+          );
   }
-  return 1;
+  return;
 }
 
 ##
@@ -457,8 +563,11 @@ sub snap_run {
   my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd}";
 
   # Log command to be run
-  logit( "Running: $snapCmdLog", 4 );
-
+  logit(  text    => "Running: $snapCmdLog",
+          message => '',
+          level   => 4,
+        );
+        
   my $exitCode;
   # OS Base?
   if ( $osName eq 'MSWin32' ) {
@@ -484,24 +593,40 @@ sub snap_run {
     if ( $stderrStat[7] > 0 ) {
       # Write it to log
       my $stamp = time_stamp();
-      my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $stamp . '.log';
+      my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $cmdArgs{cmd} . '.log';
       if ( !write_log( $logOutFile, \$cmdStderr ) ) {
-        logit( "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 2 );
+        logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 
+                message => "Warn: Unable to write log Stderr",
+                level   => 2,
+              );
       }
       
       # Abort script and request user to investigate if critical call
       if ( $cmdArgs{cmd} =~ /sync|scrub|status|diff/ ) {
-        logit( "Critical error. stderr file size: $stderrStat[7] -- Exit code: $exitCode", 1 );
-        error_die("Aborting: Snapraid cmd reports errors. Please check snapraid stderr file:- $stderrFile", 2 );  
+        logit(  text    => "Critical: stderr file size: $stderrStat[7] -- Exit code: $exitCode", 
+                message => "Crit: Snapraid error -- Exit code: $exitCode",
+                level   => 1,
+            );
+        logit(  text    => "Abort: Snapraid $cmdArgs{cmd} reports errors. Please check snapraid stderr file:- $stderrFile",
+                message => 'Abort: Snapraid $cmdArgs{cmd} reports errors',
+                level   => 2,
+                abort   => 1,
+          ); 
       } 
       else { 
         # Logit for investigation
-        logit( "Warning: Snapraid issues with cmd: $cmdArgs{cmd} - Please see log: $logOutFile", 2);
+        logit(  text    => "Warning: Snapraid issues with cmd: $cmdArgs{cmd} - Please see log: $logOutFile",
+                message => "Warn: Check log: $logOutFile",
+                level   => 2,
+              );
       }
     }
   }
   else {
-    logit( "Warning: unable to read stderr file: $stderrFile - Please check $opt{snapRaidTmpLocation} is writable", 2 ); 
+    logit(  text    => "Warning: unable to read stderr file: $stderrFile - Please check $opt{snapRaidTmpLocation} is writable",
+            message => 'Warn: unable to read stderr file',
+            level   => 2,
+          );
   }
 
   if ( defined $cmdStdout ) {
@@ -514,10 +639,14 @@ sub snap_run {
     }
   }
   else {
-    error_die( "Aborting: Unable to read stndout file:- $stdoutFile - Please check $opt{snapRaidTmpLocation} is writable", 2 );
+    logit(  text    => "Abort: Unable to read stndout file:- $stdoutFile - Please check $opt{snapRaidTmpLocation} is writable",
+            message => 'Abort: Unable to read stndout file',
+            level   => 2,
+            abort   => 1,
+          );
   }
 
-  return 1;
+  return;
 }
 
 ##
@@ -575,7 +704,7 @@ sub parse_conf {
       }
     }
   }
-  return 1;
+  return;
 }
 
 ##
@@ -640,7 +769,7 @@ sub get_opt_hash {
   # Hold value of lowest LogLevel reached
   $opt{minLogLevel} = 5;
   
-  return 1;
+  return;
 }
 
 ##
@@ -657,7 +786,10 @@ sub script_comp {
   if ( $opt{logFile} ) { 
     my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
     if ( !write_log( $logOutFile, \$scriptLog ) ) {
-      logit( "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 2 );
+      logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable",
+              message => "Warn: Unable to write log: $logOutFile",
+              level   => 2,
+            );
     } 
   }
   
@@ -687,7 +819,7 @@ sub script_comp {
 
   }
   
-  return 1;
+  return;
 }
 
 ##
@@ -738,7 +870,12 @@ sub email_send {
 
     # Send using gmail SMTP
     eval { $sender->send($email) };
-    if ($@) { logit("Warning: Gmail SMTP email send failed... $@"); }
+    if ($@) { 
+      logit(  text    => "Warning: Gmail SMTP email send failed... $@",
+              message => 'Warn: Gmail SMTP email send failed...',
+              level   => 2,
+            );
+    }
 
   }
   else {
@@ -762,7 +899,7 @@ sub email_send {
       $msg->send;
     }
   }
-  return 1;
+  return;
 }
 
 ##
@@ -814,14 +951,20 @@ sub send_message_po {
   # Did the post fail?
   if ( !$response->is_success ) {
     # Log the fail!
-    Logit( "Warning: Pushover message failed:-  $response->status_line", 2);
+    logit(  text    => "Warning: Pushover message failed:-  $response->status_line",
+            message => 'Warn: Pushover message failed',
+            level   => 2,
+          );
   }
   else {
     # Log the success
-    logit( 'Pushover message sent', 3);      
+      logit(  text    => 'Pushover message sent',
+              message => '',
+              level   => 3,
+          );
   }
 
-  return 1;
+  return;
 }
 
 ##
@@ -870,7 +1013,10 @@ sub custom_cmds {
 
   # Check it's valid
   if ( $type !~ m/pre|post/ ) {
-    logit( "Warning: Custom commands called with incorrect option", 2 );
+    logit(  text    => 'Warning: Custom commands called with incorrect option',
+            message => '',
+            level   => 2,
+          );
     return;
   }
 
@@ -908,12 +1054,18 @@ sub slurp_file {
       close $fh;              # Will auto close once once out of scope regardless
     }
     else {
-      logit( "Warning: Unable to open file: $file", 2);
+      logit(  text    => "Warning: Unable to open file: $file",
+              message => "Warn: Unable to open file: $file",
+              level   => 2,
+            );
     }
   }
   else {
     # File don't exist - Send to log @ debug level
-    logit( "Warning: call to slurp_file() with none existing file: $file", 5 );
+    logit(  text    => "Call to slurp_file() with none existing file: $file",
+            message => '',
+            level   => 5,
+          );
   }
 
   # Return the Slurpie (If file not read returns undef)
@@ -946,63 +1098,68 @@ sub time_stamp {
 
 ##
 # sub logit()
-# Create a log.
-# usage logit('Text', Level);
+# Create a log - Build a message.
+# usage logit(  text    => 'Text',
+#               message => 'Message',
+#               level   => level,
+#               abort   => 0|1,
+#             );
 # return void
 sub logit {
-
-  # Get text and loglevel
-  my ( $logText, $logLevel ) = @_;
-
-  # if not passed set to 3
-  $logLevel = $logLevel ? $logLevel : 3;
+  
+  # Get hash
+  my %logIn = @_;
+  
+  # Check incomming hash
+  if ( not $logIn{level} or $logIn{level} < 0 or $logIn{level} > 5 ) { $logIn{level} = 3; }
+  if ( not $logIn{text} and not $logIn{message} ) { 
+    $logIn{text} = 'DEBUG: No message sent to logit'; 
+    $logIn{level} = 5;
+  }
 
   # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
-  $opt{minLogLevel} = $logLevel < $opt{minLogLevel} ? $logLevel : $opt{minLogLevel};
-
-  # Get current timestamp
-  my $timeStamp = time_stamp();
-
-  # (1=Critical, 2=Warning, 3=Info, 4=Everything, 5=Debug)
-  if ( $logLevel <= $opt{logLevel} or $logLevel == 1 ) {
-    if ( $opt{logStdout} == 1 ) {
-
-      # Send to stdout
-      say( $timeStamp . " : " . $logText );
-    }
-
-    # Add to message string (Send criticals and warnings to message services)
-    if ( $logLevel <= 2 ) { messageit( $logText, $logLevel); }
-
-    # Add to log string
-    $scriptLog .= $timeStamp . " : " . $logText . "\n";
-
-  }
-  return 1;
-}
-
-##
-# sub messageit()
-# Creates message to be sent via api's to Pushover/NMA/PushBullet.
-# usage messageIt('Text', Level);
-# return void
-sub messageit {
-
-  # Get text and loglevel
-  my ( $logText, $logLevel ) = @_;
+  $opt{minLogLevel} = $logIn{level} < $opt{minLogLevel} ? $logIn{level} : $opt{minLogLevel};
   
-  # if not passed set to 3
-  $logLevel = $logLevel ? $logLevel : 3;
+  # (1=Critical, 2=Warning, 3=Info, 4=All, 5=Debug)
+  if ( $logIn{level} <= $opt{logLevel} or $logIn{level} == 1 ) {
+    
+    # Add text to logfile
+    if ( $logIn{text} ) {
+      # Get current timestamp
+      my $timeStamp = time_stamp();
+      
+      if ( $opt{logStdout} == 1 ) {
+        # Send to stdout
+        say( $timeStamp . " : " . $logIn{text} );
+      }
 
-  # (1=Critical, 2=Warning, 3=Normal)
-  if ( $logLevel <= $opt{messageLevel} or $logLevel == 1 ) {
-
-    # Add to message string
-    $scriptMessage .= $logText . "\n";
-
+      # Add to log string
+      $scriptLog .= $timeStamp . " : " . $logIn{text} . "\n";
+    }
+    
+    if ( $logIn{message} and $logIn{level} < 4 ) {
+     
+      # (1=Critical, 2=Warning, 3=Normal)
+      if ( $logIn{level} <= $opt{messageLevel} or $logIn{level} == 1 ) {
+        # Add to message string
+        $scriptMessage .= $logIn{message} . "\n";
+      }
+    }
   }
-  return 1;
+  
+  if ( $logIn{abort} ) {
+    
+    # Cleanup
+    script_comp();
+
+    # Kill script
+    croak "Fatal issue encountered. Please see logs";
+    
+  }
+  
+  return;
 }
+
 
 ##
 # sub write_log();
@@ -1021,7 +1178,10 @@ sub write_log {
     return 1;
   }
   else {
-    logit( "Warning: Unable to write $logOutFile . Please check config", 2);
+    logit(  text    => "Warning: Unable to write $logOutFile . Please check config",
+            message => "Warn: Unable to write $logOutFile",
+            level   => 2,
+          );
     return 0;
   } 
 }
@@ -1037,57 +1197,58 @@ sub debug_log {
   # May just use Data::Dumper for this
 
   # Debug -> Log Options!
-  logit( '-------- Options --------', 5 );
+  logit(  text    => '-------- Options --------',
+          message => '',
+          level   => 5,
+        );
   foreach ( sort( keys %opt ) ) {
-    logit( "Option :: $_ -> $opt{$_}", 5 );
+    logit(  text    => "Option :: $_ -> $opt{$_}",
+            message => '',
+            level   => 5,
+          );
   }
-  logit( '-------- Options End --------', 5 );
+  logit(  text    => '-------- Options End --------',
+          message => '',
+          level   => 5,
+        );
 
   # Debug -> Log Config!
-  logit( '-------- Config --------', 5 );
+  logit(  text    => '-------- Config --------',
+          message => '',
+          level   => 5,
+        );
   foreach my $confKey ( sort(keys %conf) ) {
     if ( ref($conf{$confKey}) eq "HASH" ) {
       foreach my $diskKey ( keys %{ $conf{$confKey} } ) {
-        logit( "Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}", 5 );
+        logit(  text    => "Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}",
+                message => '',
+                level   => 5,
+          );
       }
     }
     elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
       for ( my $i = 0 ; $i <= $#{ $conf{$confKey} } ; $i++ ) {
-        logit( "Config : $confKey -> $i -> $conf{$confKey}->[$i]", 5 );
+        logit(  text    => "Config : $confKey -> $i -> $conf{$confKey}->[$i]",
+                message => '',
+                level   => 5,
+              );
       }
     }
     else {
-      logit( "Config : $confKey -> $conf{$confKey}", 5 );
+      logit(  text    => "Config : $confKey -> $conf{$confKey}",
+              message => '',
+              level   => 5,
+          );
     }
   }
-  logit( '-------- Config End--------', 5 );
+  logit(  text    => '-------- Config End--------',
+          message => '',
+          level   => 5,
+        );
 
-  return 1;
+  return;
 }
 
-##
-# sub error_die()
-# Wrapper for PERL die command.
-# usage error_die("Error Text");
-# return - never gets the chance!
-sub error_die {
-
-  # Get message (list context gets first item in array only)
-  my ( $message, $level ) = @_;
-
-  # if not passed set to 2
-  $level = $level ? $level : 2;
-
-  # Log error message
-  logit( $message, $level);
-
-  # Cleanup
-  script_comp();
-
-  # Kill script
-  die;    # Wipe yourself off. You're dead.
-
-}
 
 #-------- Subroutines End --------#
 
