@@ -16,7 +16,7 @@
             More than just a script now so runs in self contained location by default
             Added tmp dir for temp files during snap_run
             Added log dir for the created log file (Plan to keep x amount of logs)
-            Added run dir for static data regarding last run
+            Added json dir for static data regarding last run
             Path added due to issue with snapraid.exe runnig smartctl
             OS type detected for future portablity compat
             Basic install.sh script to automate install
