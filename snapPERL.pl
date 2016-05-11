@@ -475,6 +475,7 @@ sub snap_smart {
                 level   => 2,
               );
       }
+      else { $smartDisk{$serial}->{fpwarn} = 0; }
     
       # Warn for disk temp
       if ( $temp > $opt{smartMaxDriveTemp} ) {
@@ -484,6 +485,7 @@ sub snap_smart {
                 level   => 2,
               );
       }
+      else { $smartDisk{$serial}->{tempwarn} = 0; }
 
       # Warn for disk errors
       if ( $error >= $opt{smartDiskErrorsWarn} ) {
@@ -493,6 +495,7 @@ sub snap_smart {
                 level   => 2,
              );
       }
+      else { $smartDisk{$serial}->{errorwarn} = 0; }
 
     }
     elsif ( $line =~ m/next\s+year\s+is/ ) {
@@ -504,6 +507,10 @@ sub snap_smart {
               message => "Drive fail within year: $arrayFail%",
               level   => 3,
             );
+            
+      $smartDisk{array}->{temp}   = 0;
+      $smartDisk{array}->{error}  = 0;
+      $smartDisk{array}->{fp}     = $arrayFail;
 
       # Warn if Fail Percentage for Array exceeds limit sit in config
       if ( $arrayFail > $opt{smartWarn} ) {
@@ -512,7 +519,8 @@ sub snap_smart {
                 message => 'Warn: Drive fail withing year > warning level',
                 level   => 2,
               );
-      }
+      } 
+      else { $smartDisk{array}->{fpwarn} = 0; }
     }
   }
   
@@ -549,7 +557,7 @@ sub snap_smart {
         # Errors increased since last run
         if ( $smartDiskIn{$key}->{error} < $smartDisk{$key}->{error} ) {
           logit(  text    => "Warning: Errors of drive: $key increased since last run",
-                  message => "Warn: Errors increased drive: $key",
+                  message => "Warn: Errors increased for drive: $key",
                   level   => 2,
                 );
           
