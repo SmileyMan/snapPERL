@@ -59,12 +59,13 @@ smartDiskErrorsWarn=1                                         #Number of errors 
 ## Snapraid options (Default locations)
 # 
 snapRaidConf=/etc/snapraid.conf                               #*Location of snapraid conf file
+#snapRaidConf=D:\snaptest\snapraid\snapraid.conf              #Location of snapraid conf file - Windows - Must point to your snapraid.conf file or script will croak
 snapRaidTmpLocation=                                          #Location of tmp files (if not defined uses scripts tmp directory)
  
 ## Binary locations(Default locations)
 #
-snapRaidBin=/usr/local/bin/snapraid                           #*Snapriad binary location
-curlBin=/usr/bin/curl                                         #*Curl binary location - Not currently used
+snapRaidBin=/usr/local/bin/snapraid                           #*Snapraid binary location
+#snapRaidBin=D:\snapraid\snapraid.exe                          #Snapraid binary location - Windows - Must point to your snapraid.exe or script will croak
 
 ## Other Options (Defaults will work fine for most. Disable logStdOut if using cron)
 #
