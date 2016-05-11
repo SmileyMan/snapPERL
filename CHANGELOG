@@ -1,3 +1,7 @@
+11/05/2016 v0.2.2
+            Added windows support. No help files yet but tested and working. Must have ActivePerl / Strawberry Perl or DWIM Perl installed
+            Tested using lastest ActivePerl and lates Snapraid for windows x64 v10.0
+    
 11/05/2016 v0.2.1
             Fixed critical bug in code loading json from pervious run that does not exist on a new install
 

@@ -13,8 +13,6 @@
            Add NMA support (Plan v0.4)
            Add Pushbullet support (Plan v0.4)
            
-           Portablity (Work with windows) (Plan 0.5)
-
            Go over code and clean (Ongoing)
            Drink beer! (Ongoing)
 
@@ -32,3 +30,5 @@
            Use carp for errors and warnings (Done v0.2)
            Code review (Done v0.2)
            Warn for disks with increasing values (Done 0.2)
+
+           Portablity (Work with windows) (Done v0.2.2)

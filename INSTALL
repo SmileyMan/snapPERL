@@ -1,6 +1,19 @@
+# Install instructions
+
 # Required Perl Modules - These will autoload on demand
 Email::Send::Gmail (If using gmail)  ->  command: sudo cpan install Email::Send::Gmail
 MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
+
+Windows: 
+(Basic first version of instuctions)
+1. Download and extract zip. 
+2. Edit and rename snapPERL.conf.example to snapPERL.conf
+3. Rename custom-cmds.example custom-cmds
+4. Use PPM with ActivePerl to install needed modules (Or other Perl Package Manager installed)
+5. From elevated command prompt run snapPERL.pl
+
+
+Linux:
 
 # This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
 
