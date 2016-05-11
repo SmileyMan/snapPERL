@@ -745,7 +745,7 @@ sub parse_conf {
   # Encode current snapraid conf to json
   my $confOut     = encode_json \%conf;
   
-  # Conf file changed?
+  # Conf file changed? # Todo: Check conf file to last run
 #  if ( comp_hash(\%confOut, \%preConf) {
 #    logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
 #            message => 'Warn: Snapraid conf file changed!',
