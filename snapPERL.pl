@@ -508,8 +508,8 @@ sub snap_smart { #TODO: Use run dir to log data from last run
   # Encode smartdata to json
   my $smartDiskOut = encode_json \%smartDisk;
   
-  # Write out to run directory (Used to chack for changes since last run)
-  my $jsonSmartOut = $opt{runFileLocation} . $slashType .  'smartout.json';
+  # Write out to json directory (Used to chack for changes since last run)
+  my $jsonSmartOut = $opt{jsonFileLocation} . $slashType .  'smartout.json';
   my $fileWritten = write_file( filename  => $jsonSmartOut,
                                 contents  => \$smartDiskOut,
                                );
@@ -733,8 +733,8 @@ sub parse_conf {
   # Encode snapraid conf to json
   my $confOut = encode_json \%conf;
   
-  # Write out to run directory (Used to chack for changes in conf)
-  my $jsonConfOut = $opt{runFileLocation} . $slashType .  'confout.json';
+  # Write out to json directory (Used to chack for changes in conf)
+  my $jsonConfOut = $opt{jsonFileLocation} . $slashType .  'confout.json';
   my $fileWritten = write_file( filename  => $jsonConfOut,
                                 contents  => \$confOut,
                                );
@@ -798,8 +798,8 @@ sub get_opt_hash {
   # If not defined in config file (Normal situation)
   if ( !$opt{logFileLocation} ) { $opt{logFileLocation} = $scriptPath . 'log'; }
   
-  # Define location for script run files (Files that hold information about previous runs)
-  $opt{runFileLocation} = $scriptPath . 'run';
+  # Define location for script json files (Files that hold information about previous runs)
+  $opt{jsonFileLocation} = $scriptPath . 'json';
   
   # Hold value of lowest LogLevel reached
   $opt{minLogLevel} = 5;
