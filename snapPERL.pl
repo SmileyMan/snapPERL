@@ -438,7 +438,7 @@ sub snap_scrub {
 # Log smart details and warn if requited
 # usage snap_smart();
 # return void
-sub snap_smart { #TODO: Use run dir to log data from last run
+sub snap_smart {
 
   # Run snapraid smart
   my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'smart' );
@@ -469,6 +469,7 @@ sub snap_smart { #TODO: Use run dir to log data from last run
 
       # Warn if Fail Percentage exceeds limit sit in config
       if ( $fp > $opt{smartDiskWarn} ) {
+        $smartDisk{$serial}->{fpwarn} = 1;
         logit(  text    => "Warning: Fail percentage for $serial has exceded warning level",
                 message => 'Warn: Fail % for $device > warning level',
                 level   => 2,
@@ -476,7 +477,8 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       }
     
       # Warn for disk temp
-      if ( $temp > $opt{smartMaxDriveTemp} ) { 
+      if ( $temp > $opt{smartMaxDriveTemp} ) {
+        $smartDisk{$serial}->{tempwarn} = 1; 
         logit(  text    => "Warning: Device:- $device Serial:- $serial : Temp:- $temp exceeds limit set in config!", 
                 message => "Warn: $device Temp:- $temp > warning level",
                 level   => 2,
@@ -484,7 +486,8 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       }
 
       # Warn for disk errors
-      if ( $error >= $opt{smartDiskErrorsWarn} ) { 
+      if ( $error >= $opt{smartDiskErrorsWarn} ) {
+        $smartDisk{$serial}->{errorwarn} = 1; 
         logit(  text    => "Warning: Device:- $device Serial:- $serial : Errors exceeds limit set in config!", 
                 message => "Warn: $device errors > warning level",
                 level   => 2,
@@ -496,6 +499,7 @@ sub snap_smart { #TODO: Use run dir to log data from last run
 
       # Get FP for array
       my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
+      $smartDisk{array}->{fp} = $arrayFail;
       logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
               message => "Drive fail within year: $arrayFail%",
               level   => 3,
@@ -503,6 +507,7 @@ sub snap_smart { #TODO: Use run dir to log data from last run
 
       # Warn if Fail Percentage for Array exceeds limit sit in config
       if ( $arrayFail > $opt{smartWarn} ) {
+        $smartDisk{array}->{fpwarn} = 1;
         logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceded warning level',
                 message => 'Warn: Drive fail withing year > warning level',
                 level   => 2,
@@ -511,14 +516,61 @@ sub snap_smart { #TODO: Use run dir to log data from last run
     }
   }
   
+  # Location of jason file for smart data
+  my $jsonSmartFile = $opt{jsonFileLocation} . $slashType .  'smartout.json';
+
+  # Load json conf from last run 
+  my $preSmart = slurp_file($jsonSmartFile);
+ 
+  # Decode json to hash
+  my %smartDiskIn = decode_json \$preSmart if ( $preSmart );
+  
+  # Data from last run
+  if ( %smartDiskIn ) {
+    foreach my $key (keys %smartDiskIn) {
+      # Valid key in new hash to compare
+      if ( exists $smartDisk{$key} ) {
+        # Temp increased since last run and warn sent
+        if ( ($smartDiskIn{$key}->{temp} < $smartDisk{$key}->{temp}) and $smartDisk{$key}->{tempwarn} ) {
+          logit(  text    => "Warning: Temp of drive: $key increased since last run",
+                  message => "Warn: Temp increased for drive: $key",
+                  level   => 2,
+                );
+          
+        } 
+        # Fail percentage increased since last run
+        if ( $smartDiskIn{$key}->{fp} < $smartDisk{$key}->{fp} ) {
+          logit(  text    => "Warning: Fail Percentage of drive: $key increased since last run",
+                  message => "Warn: FP increased for drive: $key",
+                  level   => 2,
+                );
+          
+        } 
+        # Errors increased since last run
+        if ( $smartDiskIn{$key}->{error} < $smartDisk{$key}->{error} ) {
+          logit(  text    => "Warning: Errors of drive: $key increased since last run",
+                  message => "Warn: Errors increased drive: $key",
+                  level   => 2,
+                );
+          
+        } 
+      }
+    }
+  }
+  
   # Encode smartdata to json
   my $smartDiskOut = encode_json \%smartDisk;
   
-  # Write out to json directory (Used to chack for changes since last run)
-  my $jsonSmartOut = $opt{jsonFileLocation} . $slashType .  'smartout.json';
-  my $fileWritten = write_file( filename  => $jsonSmartOut,
+  # Write out to json directory (Used to chack f
+  my $fileWritten = write_file( filename  => $jsonSmartFile,
                                 contents  => \$smartDiskOut,
                                );
+  if ( !$fileWritten ) {
+    logit(  text    => "Info: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Info: Unable to write to json dir',
+            level   => 3,
+          );
+  }
                                 
   return;
 }
@@ -740,7 +792,7 @@ sub parse_conf {
   my $jsonConfFile = $opt{jsonFileLocation} . $slashType .  'confout.json'; 
  
   # Load json conf from last run 
-  my $preConf = slurp_file($jsonConfFile);
+#  my $preConf = slurp_file($jsonConfFile);
  
   # Encode current snapraid conf to json
   my $confOut     = encode_json \%conf;
@@ -757,6 +809,12 @@ sub parse_conf {
   my $fileWritten = write_file( filename  => $jsonConfFile,
                                 contents  => \$confOut,
                                );
+  if ( !$fileWritten ) {
+    logit(  text    => "Info: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Info: Unable to write to json dir',
+            level   => 3,
+          );
+  }
   
   return;
 }
@@ -1246,6 +1304,7 @@ sub write_file {
   } 
 }
 
+#Not finished and not used yet
 sub comp_hash {
   
   my ($hashRef1, $hashRef2) = @_;
@@ -1282,12 +1341,14 @@ sub debug_log {
           message => '',
           level   => 5,
         );
+        
   foreach ( sort( keys %opt ) ) {
     logit(  text    => "Option :: $_ -> $opt{$_}",
             message => '',
             level   => 5,
           );
   }
+  
   logit(  text    => '-------- Options End --------',
           message => '',
           level   => 5,
@@ -1298,6 +1359,7 @@ sub debug_log {
           message => '',
           level   => 5,
         );
+        
   foreach my $confKey ( sort(keys %conf) ) {
     if ( ref($conf{$confKey}) eq "HASH" ) {
       foreach my $diskKey ( keys %{ $conf{$confKey} } ) {
@@ -1322,6 +1384,7 @@ sub debug_log {
           );
     }
   }
+  
   logit(  text    => '-------- Config End--------',
           message => '',
           level   => 5,
