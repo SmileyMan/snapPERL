@@ -1,4 +1,4 @@
-# snapPERL v0.2
+# snapPERL v0.2.1
 Helper script for snapraid created in PERL
 
  Snapraid helper script written in PERL. Enables automation using cron for your Array Syncs
@@ -51,14 +51,14 @@ Helper script for snapraid created in PERL
 https://github.com/SmileyMan
 
 Inspired by bash script http://zackreed.me/articles/83-updated-snapraid-sync-script 
-by Zack Reed (http://zackreed.me)L
+by Zack Reed (http://zackreed.me)
 
 Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
 I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
 
 #Work in Progress.
 
-Please have a play but expect bugs / things going wrong. This is just a wrapper for snapraid.exe
+This is just a wrapper for snapraid.exe
 and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
 (only snapraid.exe manipulates the data)
 
