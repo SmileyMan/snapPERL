@@ -463,7 +463,7 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       $smartDisk{$serial}->{fp}     = $fp;
       
       logit(  text    => "Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 
-              message => '',
+              message => "Drive $device temp:- $temp",
               level   => 3,
           );
 
@@ -497,7 +497,7 @@ sub snap_smart { #TODO: Use run dir to log data from last run
       # Get FP for array
       my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
       logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
-              message => "Drive fail withing year: $arrayFail%",
+              message => "Drive fail within year: $arrayFail%",
               level   => 3,
             );
 
