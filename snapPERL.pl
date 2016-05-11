@@ -446,6 +446,11 @@ sub snap_smart {
   # Holds disk data to be written out
   my %smartDisk;
 
+  # Counters
+  my $totalErrors = 0; 
+  my $aggregateTemp = 0; 
+  my $driveNum = 0;
+
   # Process Output
   foreach my $line ( split(/\n/, $output) ) {
 
@@ -455,13 +460,24 @@ sub snap_smart {
 
       # Get params
       my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
-      $fp = sprintf( "%02d", $fp );
-      
+
+      # Perl grabs these has strings and I want nums to be compared and go into json string
+      $temp   = int($temp);
+      $error  = int($error);
+      $fp     = int($fp);
+
+      # Counters
+      $driveNum++;
+      $totalErrors    += $error;
+      $aggregateTemp  += $temp;
+
       # Add data to hash
       $smartDisk{$serial}->{temp}   = $temp;
       $smartDisk{$serial}->{error}  = $error;
       $smartDisk{$serial}->{fp}     = $fp;
-      
+
+      $fp = sprintf( "%02d", $fp );
+    
       logit(  text    => "Device: $device     Temp: $temp     Error Count: $error     Fail Percentage: $fp%     Power on days: $days", 
               message => "Drive $device temp:- $temp",
               level   => 3,
@@ -502,25 +518,27 @@ sub snap_smart {
 
       # Get FP for array
       my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
-      $smartDisk{array}->{fp} = $arrayFail;
+      $smartDisk{ARRAY}->{fp} = $arrayFail;
       logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
               message => "Drive fail within year: $arrayFail%",
               level   => 3,
             );
             
-      $smartDisk{array}->{temp}   = 0;
-      $smartDisk{array}->{error}  = 0;
-      $smartDisk{array}->{fp}     = $arrayFail;
+      $smartDisk{ARRAY}->{temp}       = $aggregateTemp / $driveNum;
+      $smartDisk{ARRAY}->{error}      = $totalErrors;
+      $smartDisk{ARRAY}->{fp}         = int($arrayFail);
+      $smartDisk{ARRAY}->{tempwarn}   = 0;
+      $smartDisk{ARRAY}->{errorwarn}  = 0;
 
       # Warn if Fail Percentage for Array exceeds limit sit in config
       if ( $arrayFail > $opt{smartWarn} ) {
-        $smartDisk{array}->{fpwarn} = 1;
+        $smartDisk{ARRAY}->{fpwarn} = 1;
         logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceded warning level',
                 message => 'Warn: Drive fail withing year > warning level',
                 level   => 2,
               );
       } 
-      else { $smartDisk{array}->{fpwarn} = 0; }
+      else { $smartDisk{ARRAY}->{fpwarn} = 0; }
     }
   }
   
@@ -531,7 +549,9 @@ sub snap_smart {
   my $preSmart = slurp_file($jsonSmartFile);
  
   # Decode json to hash
-  my %smartDiskIn = decode_json \$preSmart if ( $preSmart );
+  my $smartDiskInRef;
+  if ( $preSmart ) { $smartDiskInRef = decode_json $preSmart; }
+  my %smartDiskIn = %{$smartDiskInRef};
   
   # Data from last run
   if ( %smartDiskIn ) {
@@ -565,10 +585,10 @@ sub snap_smart {
       }
     }
   }
-  
+
   # Encode smartdata to json
   my $smartDiskOut = encode_json \%smartDisk;
-  
+
   # Write out to json directory (Used to chack f
   my $fileWritten = write_file( filename  => $jsonSmartFile,
                                 contents  => \$smartDiskOut,
@@ -800,18 +820,18 @@ sub parse_conf {
   my $jsonConfFile = $opt{jsonFileLocation} . $slashType .  'confout.json'; 
  
   # Load json conf from last run 
-#  my $preConf = slurp_file($jsonConfFile);
+  #my $preConf = slurp_file($jsonConfFile);
  
   # Encode current snapraid conf to json
   my $confOut     = encode_json \%conf;
   
-  # Conf file changed? # Todo: Check conf file to last run
-#  if ( comp_hash(\%confOut, \%preConf) {
-#    logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
-#            message => 'Warn: Snapraid conf file changed!',
-#            level   => 2,
-#          );
-#  }
+  # Conf file changed? # Todo: Check conf file to last run - Needs more work on comp_hash
+  #if ( comp_hash(\%confOut, \%preConf) {
+  #  logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
+  #          message => 'Warn: Snapraid conf file changed!',
+  #          level   => 2,
+  #        );
+  #}
 
   # Write out json for config
   my $fileWritten = write_file( filename  => $jsonConfFile,
@@ -1299,7 +1319,7 @@ sub write_file {
   my %fileParams = @_;
   
   if ( open my $fh, '>:encoding(UTF-8)', $fileParams{filename} ) {
-    say {$fh} ${ $fileParams{contents} };
+    print {$fh} ${ $fileParams{contents} };
     close $fh;
     return 1;
   }

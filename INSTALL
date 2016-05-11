@@ -11,10 +11,11 @@ MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
 
 Install Script:
 
-1. sudo apt-get install git
-2. git clone https://github.com/SmileyMan/snapPERL.git
-3. cd snapPERL
-4. ./install.sh
+1. wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.tar.gz
+2. tar -zxvf snapPERL-v0.2.tar.gz
+3. mv snapPERL-v0.2 snapPERL
+4. cd snapPERL
+5. ./install.sh
 6. Change settings in snapPERL.conf to suit
 7. Change settings in custom-cmds to suit (Optional)
 8. ./snapPERL.pl to run
@@ -22,20 +23,28 @@ Install Script:
 
 Manual:
 
-1. sudo apt-get install git
-2. git clone https://github.com/SmileyMan/snapPERL.git
-3. cd snapPERL
-4. cp snapPERL.conf.example snapPERL.conf
-5. cp custom-cmds.example custom-cmds
-6. Change settings in snapPERL.conf to suit
-7. Change settings in custom-cmds to suit (Optional)
-8. Change attributes of files to suite (chmod 600 on snapPERL.conf highly recommended)
-9. Install modules if needed (See top of this file)
-10. ./snapPERL.pl to run
+1.  wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.tar.gz
+2.  tar -zxvf snapPERL-v0.2.tar.gz
+3.  mv snapPERL-v0.2 snapPERL
+4.  cd snapPERL
+5.  cp snapPERL.conf.example snapPERL.conf
+6.  cp custom-cmds.example custom-cmds
+7.  Change settings in snapPERL.conf to suit
+8.  Change settings in custom-cmds to suit (Optional)
+9.  Change attributes of files to suite (chmod 600 on snapPERL.conf highly recommended)
+10. Install modules if needed (See top of this file)
+11. ./snapPERL.pl to run
 
 #### You can of course run as a root crontab. Be happy it does what you need first. ####
 
-# Update
+
+Using git (This will pull latest master commit.. Not a release)
+
+1. sudo apt-get install git
+2. git clone https://github.com/SmileyMan/snapPERL.git
+3. Follow from number 4 above 
+
+Update git
 
 In snapPERL location on drive type 'git pull' - This will not clobber your conf file but be sure to check for any new options
 

@@ -1,4 +1,4 @@
-##/##/#### v0.2
+11/05/2016 v0.2
             Fixed Critical Issue: Unable to load config file whan called outside working directory
             File slurping moved to dedicated function
             Added option to turn auto touch off
@@ -17,6 +17,8 @@
             Path added due to issue with snapraid.exe runnig smartctl
             OS type detected for future portablity compat
             Basic install.sh script to automate install
+            Added warning for drives with increasing values (Temp, Errors and Fail Percentage)
+           
 
 05/05/2016 v0.1
             Added emailing function for gmail and sendmail.
