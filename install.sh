@@ -33,9 +33,6 @@ echo "Setting access attributes"
 chmod +x snapPERL.pl
 chmod 600 snapPERL.conf
 chmod 640 custom-cmds
-chmod 740 run/
-chmod 740 tmp/
-chmod 740 log/
 echo "Attributes set"
 
 echo "Install optional modules."
