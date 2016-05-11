@@ -360,7 +360,7 @@ sub snap_sync {
   }
   else {
     # Stop script.
-    logit(  text    => 'Abort: Sync failed!\n$fullLog',
+    logit(  text    => "Abort: Sync failed!\n$fullLog",
             message => 'Abort: Sync failed',
             level   => 2,
             abort   => 1,
@@ -416,10 +416,16 @@ sub snap_scrub {
             level   => 3,
           );
   }
+  elsif ( $output =~ m/Nothing\s+to\s+do/ ) {
+    logit(  text    => 'Snapraid scrub completed: Nothing to do',
+            message => 'Snapraid scrub comp: Nothing to do',
+            level   => 3,
+          );    
+  }
   else {
     # Stop script.
-    logit(  text    => 'Abort: Scrub failed!\n$fullLog',
-            message => 'Abort: Scrub failed!',
+    logit(  text    => "Abort: Scrub failed! - Please review run logs in $opt{snapRaidTmpLocation}",
+            message => 'Abort: Scrub failed! - Please see main log',
             level   => 2,
             abort   => 1,
           ); 
@@ -733,15 +739,21 @@ sub parse_conf {
   # Location of json conf file
   my $jsonConfFile = $opt{jsonFileLocation} . $slashType .  'confout.json'; 
  
-  # Load conf from last run 
-  my $preConfIn = slurp_file($jsonConfFile);
-  my %preConf   = decode_json \$preConfIn;
-  
-  # Compare the conf (Just a little santiy check)
-  # comp_conf(\%conf, \%preConf);
-  
-  # Encode current snapraid conf to json and write out
+  # Load json conf from last run 
+  my $preConf = slurp_file($jsonConfFile);
+ 
+  # Encode current snapraid conf to json
   my $confOut     = encode_json \%conf;
+  
+  # Conf file changed?
+#  if ( comp_hash(\%confOut, \%preConf) {
+#    logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
+#            message => 'Warn: Snapraid conf file changed!',
+#            level   => 2,
+#          );
+#  }
+
+  # Write out json for config
   my $fileWritten = write_file( filename  => $jsonConfFile,
                                 contents  => \$confOut,
                                );
