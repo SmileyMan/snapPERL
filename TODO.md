@@ -1,10 +1,8 @@
 
 #Todo
 
-           Add email support and messages (Working in v0.1 - Needs more testing on none Gmail)
-
-           Warn only once for disks unless value changes (Plan 0.2)
-                  
+           Add email support and messages (Working in v0.1 - Needs more testing on none Gmail setting)
+                 
            Check and confirm conf file when loaded (Plan v0.3)
            Check data and parity disks are present (Plan v0.3)
            Check and confirm conf settings (Plan v0.3)
@@ -33,3 +31,4 @@
            Re-write log code to a single function (Done v0.2)
            Use carp for errors and warnings (Done v0.2)
            Code review (Done v0.2)
+           Warn for disks with increasing values (Done 0.2)
