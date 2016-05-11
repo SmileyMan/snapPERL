@@ -25,8 +25,8 @@ Linux:
 Install Script:
 
 1. wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.1.tar.gz
-2. tar -zxvf snapPERL-v0.2.1.tar.gz
-3. mv snapPERL-v0.2 snapPERL
+2. tar -zxvf snapPERL-v0.2.2.tar.gz
+3. mv snapPERL-v0.2.2 snapPERL
 4. cd snapPERL
 5. ./install.sh
 6. Change settings in snapPERL.conf to suit
@@ -37,8 +37,8 @@ Install Script:
 Manual:
 
 1.  wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.1.tar.gz
-2.  tar -zxvf snapPERL-v0.2.1.tar.gz
-3.  mv snapPERL-v0.2 snapPERL
+2.  tar -zxvf snapPERL-v0.2.2.tar.gz
+3.  mv snapPERL-v0.2.2 snapPERL
 4.  cd snapPERL
 5.  cp snapPERL.conf.example snapPERL.conf
 6.  cp custom-cmds.example custom-cmds
