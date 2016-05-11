@@ -730,12 +730,19 @@ sub parse_conf {
     }
   }
   
-  # Encode snapraid conf to json
-  my $confOut = encode_json \%conf;
+  # Location of json conf file
+  my $jsonConfFile = $opt{jsonFileLocation} . $slashType .  'confout.json'; 
+ 
+  # Load conf from last run 
+  my $preConfIn = slurp_file($jsonConfFile);
+  my %preConf   = decode_json \$preConfIn;
   
-  # Write out to json directory (Used to chack for changes in conf)
-  my $jsonConfOut = $opt{jsonFileLocation} . $slashType .  'confout.json';
-  my $fileWritten = write_file( filename  => $jsonConfOut,
+  # Compare the conf (Just a little santiy check)
+  # comp_conf(\%conf, \%preConf);
+  
+  # Encode current snapraid conf to json and write out
+  my $confOut     = encode_json \%conf;
+  my $fileWritten = write_file( filename  => $jsonConfFile,
                                 contents  => \$confOut,
                                );
   
@@ -1225,6 +1232,27 @@ sub write_file {
           );
     return 0;
   } 
+}
+
+sub comp_hash {
+  
+  my ($hashRef1, $hashRef2) = @_;
+  my $hashMatch = 1;
+  my @diffs;
+
+  foreach my $key ( keys %{$hashRef1} ) {
+    unless ( exists ${$hashRef2}{$key} ) {
+      push @diffs, "Hash1 Key \'$key\' missing in hash2";
+      $hashMatch = 0;
+      next;
+    }
+
+    if ( ${$hashRef1}{$key} ne ${$hashRef2}{$key} ) {
+      push @diffs, "Values for Hash1 don't match Hash2";
+      $hashMatch = 1;
+    }
+  }
+  return wantarray ? @diffs : $hashMatch; 
 }
 
 ##
