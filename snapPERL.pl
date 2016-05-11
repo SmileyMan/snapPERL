@@ -550,8 +550,12 @@ sub snap_smart {
  
   # Decode json to hash
   my $smartDiskInRef;
-  if ( $preSmart ) { $smartDiskInRef = decode_json $preSmart; }
-  my %smartDiskIn = %{$smartDiskInRef};
+  my %smartDiskIn;
+  if ( $preSmart ) { 
+    $smartDiskInRef = decode_json $preSmart; 
+    %smartDiskIn = %{$smartDiskInRef}
+  }
+  
   
   # Data from last run
   if ( %smartDiskIn ) {
