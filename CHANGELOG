@@ -1,3 +1,6 @@
+11/05/2016 v0.2.1
+            Fixed critical bug in code loading json from pervious run that does not exist on a new install
+
 11/05/2016 v0.2
             Fixed Critical Issue: Unable to load config file whan called outside working directory
             File slurping moved to dedicated function
