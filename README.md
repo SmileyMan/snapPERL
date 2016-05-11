@@ -58,7 +58,7 @@ I worked with PERL and now remember why I loved it. Did not get on with BASH syn
 
 #Work in Progress.
 
-Please have a play but expect bugs / things going wrong. This is just a wrapper for snapraid.exe
+This is just a wrapper for snapraid.exe
 and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
 (only snapraid.exe manipulates the data)
 
