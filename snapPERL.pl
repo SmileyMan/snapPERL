@@ -161,7 +161,7 @@ if ( $opt{useCustomCmds} ) {
 }
 
 logit(  text    => 'Script Completed',
-        message => 'Script Completed',
+        message => '',
         level   => 3,
       );
           
@@ -516,29 +516,37 @@ sub snap_smart {
     }
     elsif ( $line =~ m/next\s+year\s+is/ ) {
 
-      # Get FP for array
-      my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
-      $smartDisk{ARRAY}->{fp} = $arrayFail;
-      logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
-              message => "Drive fail within year: $arrayFail%",
-              level   => 3,
-            );
-            
-      $smartDisk{ARRAY}->{temp}       = $aggregateTemp / $driveNum;
-      $smartDisk{ARRAY}->{error}      = $totalErrors;
-      $smartDisk{ARRAY}->{fp}         = int($arrayFail);
-      $smartDisk{ARRAY}->{tempwarn}   = 0;
-      $smartDisk{ARRAY}->{errorwarn}  = 0;
-
-      # Warn if Fail Percentage for Array exceeds limit sit in config
-      if ( $arrayFail > $opt{smartWarn} ) {
-        $smartDisk{ARRAY}->{fpwarn} = 1;
-        logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceded warning level',
-                message => 'Warn: Drive fail withing year > warning level',
-                level   => 2,
+      if ( $driveNum != 0 ) {
+        # Get FP for array
+        my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
+        $smartDisk{ARRAY}->{fp} = $arrayFail;
+        logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
+                message => "Drive fail within year: $arrayFail%",
+                level   => 3,
               );
-      } 
-      else { $smartDisk{ARRAY}->{fpwarn} = 0; }
+              
+        $smartDisk{ARRAY}->{temp}       = $aggregateTemp / $driveNum;
+        $smartDisk{ARRAY}->{error}      = $totalErrors;
+        $smartDisk{ARRAY}->{fp}         = int($arrayFail);
+        $smartDisk{ARRAY}->{tempwarn}   = 0;
+        $smartDisk{ARRAY}->{errorwarn}  = 0;
+  
+        # Warn if Fail Percentage for Array exceeds limit sit in config
+        if ( $arrayFail > $opt{smartWarn} ) {
+          $smartDisk{ARRAY}->{fpwarn} = 1;
+          logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceded warning level',
+                  message => 'Warn: Drive fail withing year > warning level',
+                  level   => 2,
+                );
+        } 
+        else { $smartDisk{ARRAY}->{fpwarn} = 0; }
+      }
+      else {
+        logit(  text    => 'No drive infromation was detected - Are you using VHD mounts?',
+                message => 'No drive info - Using VHD?',
+                level   => 3,
+              );
+      }
     }
   }
   
@@ -681,7 +689,7 @@ sub snap_run {
   my $exitCode;
   # OS Base?
   if ( $osName eq 'MSWin32' ) {
-    # TODO
+    $exitCode = system($snapCmd);
   }
   else {
     # Expand path for snapraid.exe call to smartctl

@@ -1,4 +1,8 @@
-# snapPERL v0.2.1
+# snapPERL v0.2.2
+
+### Windows Compatible
+#### Tested on Windows 10 - Snapraid x64 v10.0 and Latest ActivePerl 
+
 Helper script for snapraid created in PERL
 
  Snapraid helper script written in PERL. Enables automation using cron for your Array Syncs
