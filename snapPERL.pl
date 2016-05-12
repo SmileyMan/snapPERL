@@ -29,7 +29,7 @@ use File::Spec;       # Used to read absolute path
 use LWP::UserAgent;   # Send Post/Get (For messaging support)
 use JSON::PP;         # Encode data to JSON for storage
 
-our $VERSION = 0.2.0;
+our $VERSION = 0.2.2;
 
 ############################## Script only from here ########################################
 
@@ -182,15 +182,15 @@ script_comp();
 # return void
 sub snap_status {
 
-  # Get snapraid version
-  my ( $output, $exitCode ) = snap_run( opt => '--version', cmd => '' );
-  ( $opt{snapVersion} ) = $output =~ m/snapraid\s+v(\d+.\d+)/;
+  # Get snapraid version (cmd => 'version' not needed but snapraid ignores it so stndout/stderr files get right name)
+  my ( $output, $exitCode ) = snap_run( opt => '--version', cmd => 'version' );
+  ( $opt{snapVersion} ) = $output =~ m/snapraid\s+?v(\d+?.\d+?)/i;
 
   # Run snapraid status
   ( $output, $exitCode ) = snap_run( opt => '', cmd => 'status' );
 
   # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+error\s+detected/ ) { 
+  if ( $output !~ m/No\s+?error\s+?detected/i ) { 
     logit(  text    => 'Critical: Status shows errors detected',
             message => 'Crit: Status shows errors detected',
             level   => 1,
@@ -199,7 +199,7 @@ sub snap_status {
   }
 
   # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { 
+  if ( $output !~ m/No\s+?sync\s+?is\s+?in\s+?progress/i ) { 
     logit(  text    => 'Abort: Sync currently in progress',
             message => 'Abort: Sync currently in progress',
             level   => 2,
@@ -208,10 +208,10 @@ sub snap_status {
   }
 
   # Check for zero sub-second timestamps and correct.
-  if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
+  if ( $output =~ m/You\s+?have\s+?(?<timeStamps>\d+?)\s+?files/i ) {
 
-    # Grab match so I don't clobber it later with new code
-    my $timeStamps = $1;
+    # Grab match so I don't clobber it later with new match
+    my $timeStamps = $+{timeStamps};
 
     # Reset enabled in config and snapraid supports?
     if ( $opt{resetTimeStamps} && $opt{snapVersion} >= 10.0 ) {
@@ -221,10 +221,10 @@ sub snap_status {
       foreach my $line ( split(/\n/, $touch) ) {
 
         # Log files where time stamps where changed.
-        if ( $line =~ m/touch/ ) {
+        if ( $line =~ m/touch/i ) {
 
           # Remove word 'touch' before logging
-          $line =~ s/touch\s//;
+          $line =~ s/touch\s//i;
           logit(  text    => "Zero sub-second timestamp reset on :- $line",
                   message => '',
                   level   => 4,
@@ -251,10 +251,10 @@ sub snap_status {
   }
 
   # Get number of days since last scrub
-  ( $opt{scrubNewDays} ) = $output =~ m/the\s+newest\s+(\d+)./;
+  ( $opt{scrubNewDays} ) = $output =~ m/the\s+?newest\s+?(\d+?)./i;
 
   # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
-  ( $opt{scrubOldDays} ) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
+  ( $opt{scrubOldDays} ) = $output =~ m/scrubbed\s+?(\d+?)\s+?days\s+?ago/i;
 
   return;
 }
@@ -266,49 +266,31 @@ sub snap_status {
 # return void
 sub snap_diff {
 
-  # Lexical s
-  my ( $diffLogTxt, $missingValues );
-
   # Run snapraid diff
   my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'diff' );
 
-  # Assign values to hash
-  ( $diffHash{equal} )    = $output =~ m/(\d+)\s+equal/;
-  ( $diffHash{added} )    = $output =~ m/(\d+)\s+added/;
-  ( $diffHash{removed} )  = $output =~ m/(\d+)\s+removed/;
-  ( $diffHash{updated} )  = $output =~ m/(\d+)\s+updated/;
-  ( $diffHash{moved} )    = $output =~ m/(\d+)\s+moved/;
-  ( $diffHash{copied} )   = $output =~ m/(\d+)\s+copied/;
-  ( $diffHash{restored} ) = $output =~ m/(\d+)\s+restored/;
-
-  # If any of the diff values missing stop script.
+  # Add each diff value to %diffHash
   foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
-    if ( !defined $diffHash{$diffKey} ) {
+    if ( $output =~ m/(?<diffValue>\d+?)\s+?$diffKey/i ) {
+      $diffHash{$diffKey} = $+{diffValue};
+    }
+    else {
+      # Opps we did not get a value? Abort!
       logit(  text    => "Warning: Missing value \'$diffKey\' during diff command!",
-              message => '',
+              message => 'Abort: Diff values missing',
               level   => 2,
+              abort   => 1,
             );
-      $missingValues = 1;
-      
     }
   }
 
-  # Missing values?
-  if ( $missingValues ) { 
-    logit(  text    => 'Abort: Values missing from snapraid diff',
-            message => 'Abort: Diff values missing',
-            level   => 2,
-            abort   => 1,
-          );
-  }
-
   # Sync needed?
-  $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
+  $diffHash{sync} = $output =~ m/There\s+?are\s+?differences/i ? 1 : 0;
+  #$diffHash{sync} = $exitCode;
   
   # Log diff output
-  foreach my $key ( sort(keys %diffHash) ) {
-    $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " ";
-  }
+  my $diffLogTxt;
+  foreach my $key ( sort(keys %diffHash) ) { $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " "; }
   logit(  text    => $diffLogTxt,
           message => '',
           level   => 3,
@@ -324,7 +306,7 @@ sub snap_diff {
 # return void
 sub snap_sync {
 
-  # Lexical s
+  # Lexical's
   my $excludedCount = 0;
   my ( $dataProcessed, $fullLog );
 
@@ -335,7 +317,7 @@ sub snap_sync {
   foreach my $line ( split(/\n/, $output) ) {
 
     # Match for excluded files
-    if ( $line =~ m/Excluding\s+file/ ) {
+    if ( $line =~ m/Excluding\s+?file/i ) {
       $excludedCount++;
     }
     else {
@@ -343,10 +325,10 @@ sub snap_sync {
     }
 
     # Get size of data processed
-    if ( $line =~ m/completed/ ) { ( $dataProcessed ) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
+    if ( $line =~ m/completed/i ) { ( $dataProcessed ) = $output =~ m/completed,?\s+?(\d+?)\s+?MB\s+?processed/i; }
 
     # Was it a success?
-    if ( $line =~ m/Everything\s+OK/ ) { $opt{syncSuccess} = 1; }
+    if ( $line =~ m/Everything\s+?OK/i or $line =~ m/Nothing\s+?to\s+?do/i ) { $opt{syncSuccess} = 1; }
 
   }
 
@@ -406,17 +388,17 @@ sub snap_scrub {
   my ( $output, $exitCode ) = snap_run( opt => "$cmdArgs{plan} $cmdArgs{age}", cmd => 'scrub' );
 
   #Get size of data processed
-  if ( $output =~ m/completed/ ) { ( $dataProcessed ) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
+  if ( $output =~ m/completed/i ) { ( $dataProcessed ) = $output =~ m/completed,?\s+?(\d+?)\s+?MB processed/i; }
 
   # Was it a success?
-  if ( $output =~ m/Everything\s+OK/ ) {
+  if ( $output =~ m/Everything\s+?OK/i ) {
     # Log details from scrub.
     logit(  text    => "Snapraid scrub completed: $dataProcessed MB processed",
             message => "Snapraid scrub comp: $dataProcessed MB",
             level   => 3,
           );
   }
-  elsif ( $output =~ m/Nothing\s+to\s+do/ ) {
+  elsif ( $output =~ m/Nothing\s+?to\s+?do/i ) {
     logit(  text    => 'Snapraid scrub completed: Nothing to do',
             message => 'Snapraid scrub comp: Nothing to do',
             level   => 3,
@@ -447,19 +429,19 @@ sub snap_smart {
   my %smartDisk;
 
   # Counters
-  my $totalErrors = 0; 
+  my $totalErrors   = 0; 
   my $aggregateTemp = 0; 
-  my $driveNum = 0;
+  my $driveNum      = 0;
 
   # Process Output
   foreach my $line ( split(/\n/, $output) ) {
 
     # Match snapraid log for disk info
     # Todo: Not happy with this. Works fine but messy and unreadable... To re-visit
-    if ( $line =~ m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/ ) {
+    if ( $line =~ m/\s+?\d+?\s+?\d+?\s+?\d+?\s+?\d+?%\s+?\d\.\d\s+?[A-Za-z0-9-]+?\s+?[\/a-z]+?\s+?\w+?/i ) {
 
       # Get params
-      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
+      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)%\s+?(\d\.\d)\s+?([A-Za-z0-9-]+?)\s+?([\/a-z]+?)\s+?(\w+?)/i;
 
       # Perl grabs these as strings and I want nums to be compared and go into json string
       $temp   = int($temp);
@@ -514,11 +496,11 @@ sub snap_smart {
       else { $smartDisk{$serial}->{errorwarn} = 0; }
 
     }
-    elsif ( $line =~ m/next\s+year\s+is/ ) {
+    elsif ( $line =~ m/next\s+?year\s+?is/i ) {
 
       if ( $driveNum != 0 ) {
         # Get FP for array
-        my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
+        my ( $arrayFail ) = $line =~ m/next\s+?year\s+?is\s+?(\d+?)%/i;
         $smartDisk{ARRAY}->{fp} = $arrayFail;
         logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
                 message => "Drive fail within year: $arrayFail%",
@@ -655,7 +637,7 @@ sub snap_pool {
     my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'pool' );
 
     # Get number of links created
-    my ( $links ) = $output =~ m/(\d+)\s+links/;
+    my ( $links ) = $output =~ m/(\d+?)\s+?links/i;
     logit(  text    => "Pool command run and $links links created in $conf{pool}", 
             message => "Pool run and $links links created",
             level   => 3,
@@ -673,8 +655,8 @@ sub snap_run {
 
   # Get passed args
   my %cmdArgs    = @_;
-  my $stderrFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stderr.tmp';
-  my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stdout.tmp';
+  my $stderrFile = $opt{snapRaidTmpLocation} . $slashType . "snapPERL-$cmdArgs{cmd}-stderr.tmp";
+  my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . "snapPERL-$cmdArgs{cmd}-stdout.tmp";
 
   # Build command
   my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
@@ -725,7 +707,7 @@ sub snap_run {
       }
       
       # Abort script and request user to investigate if critical call
-      if ( $cmdArgs{cmd} =~ /sync|scrub|status|diff/ ) {
+      if ( $cmdArgs{cmd} =~ m/sync|scrub|status|diff/i ) {
         logit(  text    => "Critical: stderr file size: $stderrStat[7] -- Exit code: $exitCode", 
                 message => "Crit: Snapraid error -- Exit code: $exitCode",
                 level   => 1,
@@ -801,13 +783,13 @@ sub parse_conf {
       $value  =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
 
       # Process extra parity
-      if ( $key =~ m/\d-parity/ ) { $conf{xparity}->[ $#{ $conf{xparity} } + 1 ] = $value; }
+      if ( $key =~ m/\d-parity/i ) { $conf{xparity}->[ $#{ $conf{xparity} } + 1 ] = $value; }
 
       # Process other options and add to hash-array
-      elsif ( $key =~ m/content|exclude|share|smartctl/ ) { $conf{$key}->[ $#{ $conf{$key} } + 1 ] = $value; }
+      elsif ( $key =~ m/content|exclude|share|smartctl/i ) { $conf{$key}->[ $#{ $conf{$key} } + 1 ] = $value; }
 
       # Process data disks
-      elsif ( $key =~ m/disk|data/ ) {
+      elsif ( $key =~ m/disk|data/i ) {
         my ( $drive, $path ) = split(/\s/, $value, 2);
         $drive  =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
         $path   =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
@@ -907,7 +889,8 @@ sub get_opt_hash {
   # Get hostname
   $opt{hostname} = qx{hostname};
   # Remove vertical whitespace from hostname (Email issue)
-  chop $opt{hostname};
+  $opt{hostname} = uc($opt{hostname});
+  chomp($opt{hostname});
     
   # If not defined in config file (Normal situation)
   if ( !$opt{snapRaidTmpLocation} ) { $opt{snapRaidTmpLocation} = $scriptPath . 'tmp'; }
@@ -997,7 +980,7 @@ sub email_send {
   }
 
   # Use gmail SMTP to send the email.. System I use.
-  if ( $opt{useGmail} ) {
+  if ( $opt{useGmail} and $opt{emailSend} ) {
 
     # Load on demand need modules for Gmail send
     autoload Email::Send;
@@ -1035,7 +1018,7 @@ sub email_send {
     }
 
   }
-  else {
+  elsif ( $opt{emailSend} ) {
 
     # Load on demand needed modules for Email send
     autoload MIME::Lite;
@@ -1050,10 +1033,22 @@ sub email_send {
 
     # Send.
     if ( $opt{emailUseSmtp} ) {
-      $msg->send( 'smtp', $opt{emailSmtpAddress}, Timeout => 60 );
+      eval { $msg->send( 'smtp', $opt{emailSmtpAddress}, Timeout => 60 ) };
+      if ($@) { 
+      logit(  text    => "Warning: SMTP email send failed... $@",
+              message => 'Warn: SMTP email send failed...',
+              level   => 2,
+            );
+      }
     }
     else {
-      $msg->send;
+      eval { $msg->send };
+      if ($@) { 
+      logit(  text    => "Warning: Local SMTP email send failed... $@",
+              message => 'Warn: Local SMTP email send failed...',
+              level   => 2,
+            );
+      }
     }
   }
   return;
@@ -1184,7 +1179,13 @@ sub custom_cmds {
     for ( my $i = 0 ; $i <= $#{ $customCmds{$type} } ; $i++ ) {
 
       # Run command
-      system( $customCmds{$type}->[$i] );
+      eval { system( $customCmds{$type}->[$i] ) };
+      if ($@) { 
+      logit(  text    => "Warning: Custom-cmd: $customCmds{$type}->[$i] failed... $@",
+              message => 'Warn: Custom-cmd: $customCmds{$type}->[$i] failed',
+              level   => 2,
+            );
+      }
     }
   }
   return 1;
