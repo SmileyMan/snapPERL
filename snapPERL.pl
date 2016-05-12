@@ -33,7 +33,7 @@ our $VERSION = 0.2.0;
 
 ############################## Script only from here ########################################
 
-# Get os name from perl inbuilt varible
+# Get os name from perl inbuilt variable
 my $osName = $^O;
 my $slashType;
 
@@ -52,10 +52,10 @@ my ( $scriptPath, $scriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
 # Define options file
 my $optionsFile = $scriptPath . 'snapPERL.conf';
 
-# Defind custom commands file
+# Define custom commands file
 my $customCmdsFile = $scriptPath . 'custom-cmds';
 
-# Define package varibles (Lexical to package)
+# Define package variables (Lexical to package)
 my ( $scriptLog, $scriptMessage );
 my ( %diffHash, %opt, %conf, %customCmds );
 
@@ -112,7 +112,7 @@ else {
         );
 }
 
-# Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will allways be 0.
+# Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will always be 0.
 # So second check on oldest scrubbed block is made and scrub called if needed.
 if ( $opt{scrubNewDays} >= $opt{scrubDays} or $opt{scrubOldDays} >= $opt{scrubOldest} ) {
 
@@ -266,7 +266,7 @@ sub snap_status {
 # return void
 sub snap_diff {
 
-  # Lexicals
+  # Lexical s
   my ( $diffLogTxt, $missingValues );
 
   # Run snapraid diff
@@ -324,7 +324,7 @@ sub snap_diff {
 # return void
 sub snap_sync {
 
-  # Lexicals
+  # Lexical s
   my $excludedCount = 0;
   my ( $dataProcessed, $fullLog );
 
@@ -372,7 +372,7 @@ sub snap_sync {
 
     # Check its a compatible version of snapraid.
     if ( $opt{snapVersion} >= 9.0 ) {
-      logit(  text    => 'ScrubNew option set. Scrubing lastest sync data',
+      logit(  text    => 'ScrubNew option set. Scrubing latest sync data',
               message => 'Scrubbing latest sync data',
               level   => 3,
           );
@@ -455,13 +455,13 @@ sub snap_smart {
   foreach my $line ( split(/\n/, $output) ) {
 
     # Match snapraid log for disk info
-    # Todo: Not happy with this. Works fine but messy and unreadble... To re-visit
+    # Todo: Not happy with this. Works fine but messy and unreadable... To re-visit
     if ( $line =~ m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/ ) {
 
       # Get params
       my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
 
-      # Perl grabs these has strings and I want nums to be compared and go into json string
+      # Perl grabs these as strings and I want nums to be compared and go into json string
       $temp   = int($temp);
       $error  = int($error);
       $fp     = int($fp);
@@ -486,7 +486,7 @@ sub snap_smart {
       # Warn if Fail Percentage exceeds limit sit in config
       if ( $fp > $opt{smartDiskWarn} ) {
         $smartDisk{$serial}->{fpwarn} = 1;
-        logit(  text    => "Warning: Fail percentage for $serial has exceded warning level",
+        logit(  text    => "Warning: Fail percentage for $serial has exceeded warning level",
                 message => 'Warn: Fail % for $device > warning level',
                 level   => 2,
               );
@@ -534,7 +534,7 @@ sub snap_smart {
         # Warn if Fail Percentage for Array exceeds limit sit in config
         if ( $arrayFail > $opt{smartWarn} ) {
           $smartDisk{ARRAY}->{fpwarn} = 1;
-          logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceded warning level',
+          logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceeded warning level',
                   message => 'Warn: Drive fail withing year > warning level',
                   level   => 2,
                 );
@@ -542,7 +542,7 @@ sub snap_smart {
         else { $smartDisk{ARRAY}->{fpwarn} = 0; }
       }
       else {
-        logit(  text    => 'No drive infromation was detected - Are you using VHD mounts?',
+        logit(  text    => 'No drive information was detected - Are you using VHD mounts?',
                 message => 'No drive info - Using VHD?',
                 level   => 3,
               );
@@ -550,7 +550,7 @@ sub snap_smart {
     }
   }
   
-  # Location of jason file for smart data
+  # Location of Json file for smart data
   my $jsonSmartFile = $opt{jsonFileLocation} . $slashType .  'smartout.json';
 
   # Load json conf from last run 
@@ -601,7 +601,7 @@ sub snap_smart {
   # Encode smartdata to json
   my $smartDiskOut = encode_json \%smartDisk;
 
-  # Write out to json directory (Used to chack f
+  # Write out to json directory
   my $fileWritten = write_file( filename  => $jsonSmartFile,
                                 contents  => \$smartDiskOut,
                                );
@@ -643,7 +643,7 @@ sub snap_spindown {
 
 ##
 # sub snap_pool
-# Creat pool if valid config option exists
+# Create pool if valid config option exists
 # usage snap_pool();
 # return void
 sub snap_pool {
@@ -877,7 +877,7 @@ sub get_opt_hash {
     # Ignore lines without options in them
     if ( $optin =~ m/=/ ) {
 
-      # Lexicals
+      # Lexical s
       my ( $key, $value, $comment, $valueC );
 
       # Split keys
@@ -1040,7 +1040,7 @@ sub email_send {
     # Load on demand needed modules for Email send
     autoload MIME::Lite;
 
-    # Send email via localy configured sendmail server.
+    # Send email via locally configured sendmail server.
     my $msg = MIME::Lite->new(
       From    => $opt{emailSendAddress},
       To      => $opt{emailAddress},
@@ -1206,7 +1206,7 @@ sub slurp_file {
   # File exists?
   if ( -e $file ) {
     if ( open my $fh, '<:encoding(UTF-8)', $file ) {
-      local $/ = undef;       # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
+      local $/ = undef;       # Don't clobber global version. Normally holds 'newline' and reads one line at a time
       $slushPuppie = <$fh>;   # My favorite slurp
       close $fh;              # Will auto close once once out of scope regardless
     }
@@ -1233,7 +1233,7 @@ sub slurp_file {
 # sub time_stamp();
 # Create a timestamp for the log.
 # usage $stamp = time_stamp();
-# returns formated timestamp
+# returns formatted timestamp
 sub time_stamp {
 
   # Define month names
@@ -1248,7 +1248,7 @@ sub time_stamp {
   # Convert to full 4 digit year
   my $fullYear = $year + 1900;
 
-  # Return formated timestamp
+  # Return formatted timestamp
   return sprintf( "%02d:%02d:%02d - %s %d %s %d", $hour, $min, $sec, $days[$wday], $mday, $months[$mon], $fullYear );
 
 }
@@ -1267,14 +1267,14 @@ sub logit {
   # Get hash
   my %logIn = @_;
   
-  # Check incomming hash
+  # Check incoming hash
   if ( not $logIn{level} or $logIn{level} < 0 or $logIn{level} > 5 ) { $logIn{level} = 3; }
   if ( not $logIn{text} and not $logIn{message} ) { 
     $logIn{text} = 'DEBUG: No message sent to logit'; 
     $logIn{level} = 5;
   }
 
-  # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
+  # Variable holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
   $opt{minLogLevel} = $logIn{level} < $opt{minLogLevel} ? $logIn{level} : $opt{minLogLevel};
   
   # (1=Critical, 2=Warning, 3=Info, 4=All, 5=Debug)
