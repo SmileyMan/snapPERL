@@ -4,6 +4,7 @@
 ~~~
 **Email::Send::Gmail** (If using gmail)  ->  command: sudo cpan install Email::Send::Gmail
 **MIME::Lite**         (if using email)  ->  command: sudo cpan install MIME:Lite
+~~~
 
 Windows: 
 (Basic first version of instuctions)
@@ -17,11 +18,11 @@ Windows:
 
 ## Linux:
 
-### This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
+#### This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
 
-### Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
+#### Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
 
-#### Install
+##### Install
 
 
 Install Script:
@@ -53,7 +54,7 @@ Manual:
 11. ./snapPERL.pl to run
 ~~~
 
-#### You can of course run as a root crontab. Be happy it does what you need first. 
+##### You can of course run as a root crontab. Be happy it does what you need first. 
 
 
 Using git (This will pull latest master commit.. Not a release)
