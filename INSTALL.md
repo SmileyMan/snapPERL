@@ -28,7 +28,7 @@ Windows:
 Install Script:
 
 ~~~BASH
-1. wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.1.tar.gz
+1. wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.2.tar.gz
 2. tar -zxvf snapPERL-v0.2.2.tar.gz
 3. mv snapPERL-v0.2.2 snapPERL
 4. cd snapPERL
@@ -41,7 +41,7 @@ Install Script:
 Manual:
 
 ~~~BASH
-1.  wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.1.tar.gz
+1.  wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.2.tar.gz
 2.  tar -zxvf snapPERL-v0.2.2.tar.gz
 3.  mv snapPERL-v0.2.2 snapPERL
 4.  cd snapPERL
