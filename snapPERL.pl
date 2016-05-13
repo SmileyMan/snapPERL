@@ -655,12 +655,14 @@ sub snap_run {
 
   # Get passed args
   my %cmdArgs    = @_;
-  my $stderrFile = $opt{snapRaidTmpLocation} . $slashType . "snapPERL-$cmdArgs{cmd}-stderr.tmp";
-  my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . "snapPERL-$cmdArgs{cmd}-stdout.tmp";
+  my $snapraidLogFile = $opt{logFileLocation} . $slashType . "snapraid-$cmdArgs{cmd}-log.tmp";
+  my $stderrFile      = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stderr.tmp";
+  my $stdoutFile      = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stdout.tmp";
 
   # Build command
-  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
-  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd}";
+  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapraidLogFile -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
+  #my @snapCmd     = ( "$opt{snapRaidBin}", "-c $opt{snapRaidConf}", "-l $snapraidLogFile", '-v',  "$cmdArgs{opt}", "$cmdArgs{cmd}" );
+  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapraidLogFile -v $cmdArgs{opt} $cmdArgs{cmd}";
 
   # Log command to be run
   logit(  text    => "Running: $snapCmdLog",
@@ -713,7 +715,7 @@ sub snap_run {
                 level   => 1,
             );
         logit(  text    => "Abort: Snapraid $cmdArgs{cmd} reports errors. Please check snapraid stderr file:- $stderrFile",
-                message => 'Abort: Snapraid $cmdArgs{cmd} reports errors',
+                message => "Abort: Snapraid $cmdArgs{cmd} reports errors",
                 level   => 2,
                 abort   => 1,
           ); 
@@ -983,10 +985,21 @@ sub email_send {
   if ( $opt{useGmail} and $opt{emailSend} ) {
 
     # Load on demand need modules for Gmail send
-    autoload Email::Send;
-    autoload Email::Send::Gmail;
-    autoload Email::Simple::Creator;
-
+    my $loadFail;
+    eval { autoload Email::Send };            if ($@) { $loadFail += 'Email::Simple::Creator '; }
+    eval { autoload Email::Send::Gmail };     if ($@) { $loadFail += 'Email::Simple::Creator '; }
+    eval { autoload Email::Simple::Creator }; if ($@) { $loadFail += 'Email::Simple::Creator '; }
+    
+    # Modules did not load
+    if ( $loadFail ) {
+      logit(  text    => "Warning: Failed to load modules for Gmail: $loadFail",
+              message => 'Warn: Failed to load modules for Gmail',
+              level   => 2,
+            );
+      # Return to caller with false boolean
+      return 0;
+    }
+    
     # Create gmail email
     my $email = Email::Simple->create(
       header => [
@@ -1021,7 +1034,20 @@ sub email_send {
   elsif ( $opt{emailSend} ) {
 
     # Load on demand needed modules for Email send
-    autoload MIME::Lite;
+    
+    # Different lexical scope to first var of this name
+    my $loadFail;
+    eval { autoload MIME::Lite; };  if ($@) { $loadFail += 'autoload MIME::Lite; '; }
+    
+    # Modules did not load
+    if ( $loadFail ) {
+      logit(  text    => "Warning: Failed to load modules for Email: $loadFail",
+              message => 'Warn: Failed to load modules for Email',
+              level   => 2,
+            );
+      # Return to caller with false boolean
+      return 0;
+    }
 
     # Send email via locally configured sendmail server.
     my $msg = MIME::Lite->new(
@@ -1051,7 +1077,7 @@ sub email_send {
       }
     }
   }
-  return;
+  return 1;
 }
 
 ##
