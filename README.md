@@ -55,7 +55,10 @@ Helper script for snapraid created in PERL
 https://github.com/SmileyMan
 
 Inspired by bash script http://zackreed.me/articles/83-updated-snapraid-sync-script 
-by Zack Reed (http://zackreed.me)
+- Zack Reed (http://zackreed.me)
+
+Which in turn was a modified version of https://gist.github.com/bfg100k/87a1bbccf4f15d963ff7 
+- Sidney Chong first created in 2011
 
 Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
 I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
