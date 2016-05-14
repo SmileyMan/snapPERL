@@ -3,7 +3,6 @@
 
            Add email support and messages (Working in v0.1 - Needs more testing on none Gmail setting)
                  
-           Check data and parity disks are present (Plan v0.3)
            Check and confirm conf settings (Plan v0.3)
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (Plan v0.3)
            Add Pre-Hash option to config and script (Plan v0.3)
@@ -40,3 +39,4 @@
            Portablity (Work with windows) (Done v0.2.2)
 
            Check and confirm conf file when loaded (Done v0.3)
+           Check data and parity disks are present (Done v0.3)
