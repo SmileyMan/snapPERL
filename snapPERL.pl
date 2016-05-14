@@ -82,6 +82,12 @@ if ( $opt{useCustomCmds} ) {
 # Parse snapraid conf file
 parse_conf();
 
+# Auto mount and unmount parity
+#if ( %opt{autoMountParity} ) { mount_parity(); }
+
+# Check conf hash
+check_conf();
+
 # Get current state.
 snap_status();
 snap_diff();
@@ -630,8 +636,8 @@ sub snap_spindown {
 # return void
 sub snap_pool {
 
-  # Check for pool entry in snapraid config
-  if ( $conf{pool} ) {
+  # Check for pool entry in snapraid config and it exists
+  if ( $conf{pool} and -d $conf{pool} ) {
 
     # Run snapraid pool command
     my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'pool' );
@@ -641,6 +647,20 @@ sub snap_pool {
     logit(  text    => "Pool command run and $links links created in $conf{pool}", 
             message => "Pool run and $links links created",
             level   => 3,
+          );
+  }
+  # Not a valid directory?
+  elsif ( not -d $conf{pool} ) {
+    logit(  text    => "Warning: Unable to pool location if config file not a valid directory - Value: $conf{pool}", 
+            message => "Warn: Pool setting in conf file not valid",
+            level   => 2,
+          );
+  }
+  # No value for pool parsed from snapraid.conf 
+  else {
+    logit(  text    => 'Warning: Pool option set but no entry in snapraid conf file', 
+            message => 'Warn: No pool location in snapraid conf',
+            level   => 2,
           );
   }
   return;
@@ -795,7 +815,7 @@ sub parse_conf {
         my ( $drive, $path ) = split(/\s/, $value, 2);
         $drive  =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
         $path   =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
-        $conf{$key}->{$drive} = $path;
+        $conf{data}->{$drive} = $path;
       }
 
       # Values left are singular. Add to hash
@@ -837,6 +857,92 @@ sub parse_conf {
     logit(  text    => "Info: Unable to write to: $opt{jsonFileLocation}",
             message => 'Info: Unable to write to json dir',
             level   => 3,
+          );
+  }
+  
+  return;
+}
+
+##
+# sub check_conf
+# Check to values loaded from conf file for sanity. Abort if critical issue found
+# usage check_conf();
+# return void
+sub check_conf {
+
+  # Set to 1 to abort
+  my $invalidConf = 0;
+  
+  # Getting keys from hash ref's experimental so assign them to lexical hashes (Come on Perl6 only been waiting since 2000)
+  my %confData    = %{$conf{data}};
+  my @confContent = @{$conf{content}};
+  my @confXparity;
+  if ( defined $conf{xparity} ) { @confXparity = @{$conf{xparity}}; }
+  
+  # Check parity file
+  if ( not -e $conf{parity} ) { 
+    # No parity file - Set flag to abort
+    $invalidConf = 1;
+    logit(  text    => "Warning: Missing parity file: $conf{parity}",
+            message => "Warn: Missing parity file: $conf{parity}",
+            level   => 2,
+          );
+    logit(  text    => 'Warning: Parity not mounted or not built?',
+            message => 'Warn: Parity not mounted or not built?',
+            level   => 2,
+          );
+  }
+  
+  # Check all data locations exist
+  foreach my $confKey ( sort(keys %confData) ) { 
+    if ( not -d $confData{$confKey} ) { 
+      # Missing data location - Set flag to abort
+      $invalidConf = 1;
+      logit(  text    => "Warning: Missing data drive: $confData{$confKey}",
+              message => "Warn: Missing data drive: $confData{$confKey}",
+              level   => 2,
+            );
+    }
+  }
+
+  # Check each content file listed exists
+  my $anyValidContent = 0;
+  for ( my $i = 0 ; $i <= $#confContent ; $i++ ) {
+    if ( not -e $confContent[$i] ) { 
+      logit(  text    => "Warning: Missing content file: $confContent[$i]",
+              message => "Warn: Missing content file: $confContent[$i]",
+              level   => 2,
+            );
+    } 
+    else { 
+      # At least one valid content file exist. So we don't abort and let snapraid handle it
+      $anyValidContent = 1; 
+    } 
+  }
+  # No valid content file - Set flag to abort
+  if ( not $anyValidContent ) { $invalidConf = 1; }
+  
+  # Check each extra parity file exists
+  for ( my $i = 0 ; $i <= $#confXparity ; $i++ ) {
+    if ( not -e $confXparity[$i] ) { 
+      # Missing extra parity file - Set flag to abort
+      $invalidConf = 1;
+      logit(  text    => "Warning: Missing parity file: $confXparity[$i]",
+              message => "Warn: Missing parity file: $confXparity[$i]",
+              level   => 2,
+            );
+      logit(  text    => 'Warning: Parity not mounted or not built?',
+              message => 'Warn: Parity not mounted or not built?',
+              level   => 2,
+            );
+    }
+  }
+  
+  if ( $invalidConf ) {
+    logit(  text    => 'Critical: Invalid snapraid conf file - Aborting',
+            message => 'Crit: Invalid snapraid conf - Abort',
+            level   => 1,
+            abort   => 1,
           );
   }
   
