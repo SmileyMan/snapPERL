@@ -3,7 +3,6 @@
 
            Add email support and messages (Working in v0.1 - Needs more testing on none Gmail setting)
                  
-           Check and confirm conf settings (Plan v0.3)
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (Plan v0.3)
            Add Pre-Hash option to config and script (Plan v0.3)
            Keep x amount of logs (Plan v0.3)
