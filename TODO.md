@@ -7,7 +7,7 @@
            Check data and parity disks are present (Plan v0.3)
            Check and confirm conf settings (Plan v0.3)
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (Plan v0.3)
-           Add Pre-Hash option to config and scriot (Plan v0.3)
+           Add Pre-Hash option to config and script (Plan v0.3)
            Keep x amount of logs (Plan v0.3)
 
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
