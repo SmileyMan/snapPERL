@@ -1,4 +1,4 @@
-# snapPERL v0.2.2
+# snapPERL v0.3.0-beta (Dev Branch)
 
 ### Windows Compatible
 #### Tested on Windows 10 - Snapraid x64 v10.0 and Latest ActivePerl 
