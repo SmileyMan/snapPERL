@@ -986,8 +986,8 @@ sub email_send {
 
     # Load on demand need modules for Gmail send
     my $loadFail;
-    eval { autoload Email::Send };            if ($@) { $loadFail += 'Email::Simple::Creator '; }
-    eval { autoload Email::Send::Gmail };     if ($@) { $loadFail += 'Email::Simple::Creator '; }
+    eval { autoload Email::Send };            if ($@) { $loadFail += 'Email::Send '; }
+    eval { autoload Email::Send::Gmail };     if ($@) { $loadFail += 'Email::Send::Gmail '; }
     eval { autoload Email::Simple::Creator }; if ($@) { $loadFail += 'Email::Simple::Creator '; }
     
     # Modules did not load
