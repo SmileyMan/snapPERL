@@ -39,6 +39,7 @@
            Portablity (Work with windows) (Done v0.2.2)
 
            Check and confirm conf file when loaded (Done v0.3)
+           Send warning if conf file changed since last run (Done v0.3)
            Check data and parity disks are present (Done v0.3)
            Options to ignore disks not in array or not smart capable (Done v0.3)
            Add Pre-Hash option to config and script - Snapraid v10.0+ only (Done v0.3)

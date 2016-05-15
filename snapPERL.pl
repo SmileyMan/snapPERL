@@ -28,6 +28,7 @@ use Module::Load;     # Perl core module for on demand loading of optional modul
 use File::Spec;       # Used to read absolute path
 use LWP::UserAgent;   # Send Post/Get (For messaging support)
 use JSON::PP;         # Encode data to JSON for storage
+use Data::Dumper;     # Debug use
 
 our $VERSION = 0.2.2;
 
@@ -858,19 +859,31 @@ sub parse_conf {
   # Location of json conf file
   my $jsonConfFile = $opt{jsonFileLocation} . $slashType .  'confout.json'; 
  
-  # Load json conf from last run 
-  #my $preConf = slurp_file($jsonConfFile);
+  # Json object
+  my $json = JSON::PP->new;
+  $json = $json->canonical(1);
  
+  # Load json conf from last run 
+  my $preConf = slurp_file($jsonConfFile);
+ 
+  # Decode json file
+  my $preConfRef;
+  my %preConf;
+  if ( $preConf ) {
+    $preConfRef = $json->decode($preConf); 
+    %preConf = %{$preConfRef};
+  }
+   
+  # Conf file changed? 
+  if ( !compare_data_structure(\%conf, \%preConf) ) {
+    logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
+            message => 'Warn: Snapraid conf file changed!',
+            level   => 2,
+          );
+  }
+
   # Encode current snapraid conf to json
-  my $confOut     = encode_json \%conf;
-  
-  # Conf file changed? # Todo: Check conf file to last run - Needs more work on comp_hash
-  #if ( comp_hash(\%confOut, \%preConf) {
-  #  logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
-  #          message => 'Warn: Snapraid conf file changed!',
-  #          level   => 2,
-  #        );
-  #}
+  my $confOut     = $json->encode(\%conf);
 
   # Write out json for config
   my $fileWritten = write_file( filename  => $jsonConfFile,
@@ -1494,26 +1507,58 @@ sub write_file {
   } 
 }
 
-#Not finished and not used yet
-sub comp_hash {
+##
+# sub comp_data_structure();
+# Compare two data structures you expect to be identical
+# Recursive self calling. Will follow down no mater how many levels or types
+# usage comp_data_structure( \%|@refData1, \%|@refData2 );
+# returns 1 if data structures match perfect and 0 if not
+sub compare_data_structure {
   
-  my ($hashRef1, $hashRef2) = @_;
-  my $hashMatch = 1;
-  my @diffs;
-
-  foreach my $key ( keys %{$hashRef1} ) {
-    unless ( exists ${$hashRef2}{$key} ) {
-      push @diffs, "Hash1 Key \'$key\' missing in hash2";
-      $hashMatch = 0;
-      next;
-    }
-
-    if ( ${$hashRef1}{$key} ne ${$hashRef2}{$key} ) {
-      push @diffs, "Values for Hash1 don't match Hash2";
-      $hashMatch = 1;
+  my ($dataRef1, $dataRef2) = @_;
+  
+  # Sent hash refs?
+  if ( ref $dataRef1 eq 'HASH' and ref $dataRef2 eq 'HASH' ) {
+    foreach my $key ( keys %{$dataRef1} ) {
+      #Check keys
+      if ( not exists $dataRef2->{$key} ) {
+        # Return false
+        return 0;
+      }
+      # Check values
+      if ( $dataRef1->{$key} ne $dataRef2->{$key} ) {
+        if ( (ref $dataRef1->{$key} eq 'HASH' and ref $dataRef2->{$key} eq 'HASH') or (ref $dataRef1->{$key} eq 'ARRAY' and ref $dataRef2->{$key} eq 'ARRAY') ) {
+          # Recursive call on self 
+          if ( !compare_data_structure($dataRef1->{$key}, $dataRef2->{$key}) ) { return 0; }
+        }
+        else { 
+          # Return false
+          return 0;
+        }
+      }
     }
   }
-  return wantarray ? @diffs : $hashMatch; 
+  # Sent Array refs?
+  elsif ( ref $dataRef1 eq 'ARRAY' and ref $dataRef2 eq 'ARRAY' ) {
+    for ( my $i = 0; $i <= $#{ $dataRef1 }; $i++ ) {
+      if ( $dataRef1->[$i] ne $dataRef2->[$i] ) {
+        if ( (ref $dataRef1->[$i] eq 'HASH' and ref $dataRef2->[$i] eq 'HASH') or (ref $dataRef1->[$i] eq 'ARRAY' and ref $dataRef2->[$i] eq 'ARRAY') ) {
+          # Recursive call on self
+          if ( !compare_data_structure(${$dataRef1}[$i], ${$dataRef2}[$i]) ) { return 0; }
+        }
+        else { 
+          # Return false
+          return 0;
+        }
+      }
+    }
+  }
+  else {
+    # Sent mixed refs?
+    return 0;
+  }
+  # Gets here then it all matched! - Return true
+  return 1; 
 }
 
 ##

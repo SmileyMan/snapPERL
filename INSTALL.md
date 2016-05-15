@@ -6,7 +6,13 @@ Email::Send::Gmail (If using gmail)  ->  command: sudo cpan install Email::Send:
 MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
 ~~~
 
-Windows: 
+##Windows: 
+
+You need Perl installed on windows. Options are:
+1. ActivePerl       - http://www.activestate.com/activeperl
+2. Strawberry Perl  - http://strawberryperl.com/
+3. DWIM Perl        - http://dwimperl.com/
+
 (Basic first version of instuctions)
 ~~~ Windows
 1. Download and extract zip. 
