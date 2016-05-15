@@ -7,6 +7,7 @@
            Add Pre-Hash option to config and script (Plan v0.3)
            Keep x amount of logs (Plan v0.3)
 
+           Limited command line options that overide conf settings (Plan v0.4)
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
            Allow spindown setting per disk (Plan v0.4)
            Allow smart data per disk (Plan v0.4)
