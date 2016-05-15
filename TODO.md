@@ -9,6 +9,7 @@
 
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
            Allow spindown setting per disk (Plan v0.4)
+           Allow smart data per disk (Plan v0.4)
            Mount and unmount parity (Plan v0.4)
            Add NMA support (Plan v0.4)
            Add Pushbullet support (Plan v0.4)
