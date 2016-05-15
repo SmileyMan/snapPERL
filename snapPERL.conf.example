@@ -36,16 +36,18 @@ nmaSend=0                                                     #Send NMA alerts -
 #
 pushBulletSend=0                                              #Send pushbullet alerts - Not currently active
   
-## Sync and Scrub options (Defaults will work fine for most people)
+## Sync options (Defaults will work fine for most people)
 #
 deletedFiles=50                                               #Max amount of deleted files to auto sync
 changedFiles=500                                              #Max amount of changed files to auto sync
+
+## Scrub options (Defaults will work fine for most people)
+#
 scrubDays=7                                                   #Number of days before scrub is run 
 scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
 scrubAge=10                                                   #Data older than days
 scrubPercentage=8                                             #Percentage of array to scrub
 useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
-resetTimeStamps=1                                             #Use touch command to reset sub-second time stamps (Snapraid 10.0+)
   
 ## Smart options (Defaults will work fine for most people)
 ## You must have smartmontools installed - sudo apt-get install smartmontools
@@ -61,7 +63,11 @@ smartDiskErrorsWarn=1                                         #Number of errors 
 # 
 snapRaidConf=/etc/snapraid.conf                               #*Location of snapraid conf file
 #snapRaidConf=D:\snaptest\snapraid\snapraid.conf              #Location of snapraid conf file - Windows - Must point to your snapraid.conf file or script will croak
-snapRaidTmpLocation=                                          #Location of tmp files (if not defined uses scripts tmp directory)
+snapRaidTmpLocation=                                          #Location of tmp files (if not defined uses scripts tmp directory) - Default empty
+preHashOnSync=1                                               #Pre-hash during sync to remove posiblity of silent error on busy machines. Please see snapraid manual http://www.snapraid.it/manual - Recomended Option! - v10.0+ only
+resetTimeStamps=1                                             #Use touch command to reset sub-second time stamps (Snapraid 10.0+)
+spinDown=0                                                    #Spindown array once script completed?
+pool=0                                                        #Run pool command if valid config option found?
  
 ## Binary locations(Default locations)
 #
@@ -70,10 +76,8 @@ snapRaidBin=/usr/local/bin/snapraid                           #*Snapraid binary 
 
 ## Other Options (Defaults will work fine for most. Disable logStdOut if using cron)
 #
-spinDown=0                                                    #Spindown array once script completed?
-pool=0                                                        #Run pool command if valid config option found?
 logFile=snapPERL.log                                          #Main logfile name
-logFileLocation=                                              #Location of log file (If not defined uses scripts log directory)
+logFileLocation=                                              #Location of log file (If not defined uses scripts log directory) - Default: Empty
 logLevel=3                                                    #Level of logging (1:- Critical, 2:- Warning, 3:- Info, 4:- Everything, 5:- Debug)
 messageLevel=3                                                #For pushover/NMA/PushBullet (1:- Critical only 2:- +Warnings 3:- Normal)
 logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P)

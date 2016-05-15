@@ -330,9 +330,17 @@ sub snap_sync {
   # Lexical's
   my $excludedCount = 0;
   my ( $dataProcessed, $fullLog );
-
-  # Run snapraid sync command
-  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'sync' );
+  
+  my ( $output, $exitCode );
+  # Use pre-hash on sync? Snapraid version must be 10.0+
+  if ( $opt{preHashOnSync} and $opt{snapVersion} >= 10.0 ) { 
+    # Run snapraid sync command with pre-hash - Recommended on v10.0
+    ( $output, $exitCode ) = snap_run( opt => '-h', cmd => 'sync' );    
+  }
+  else {
+    # Run snapraid sync command no pre-hash
+    ( $output, $exitCode ) = snap_run( opt => '', cmd => 'sync' );  
+  }
 
   # Process output
   foreach my $line ( split(/\n/, $output) ) {
@@ -887,13 +895,7 @@ sub check_conf {
 
   # Set to 1 to abort
   my $invalidConf = 0;
-  
-  # Getting keys from hash ref's experimental so assign them to lexical hashes (Come on Perl6 only been waiting since 2000)
-  my %confData    = %{$conf{data}};
-  my @confContent = @{$conf{content}};
-  my @confXparity;
-  if ( defined $conf{xparity} ) { @confXparity = @{$conf{xparity}}; }
-  
+ 
   # Check parity file
   if ( not -e $conf{parity} ) { 
     # No parity file - Set flag to abort
@@ -909,12 +911,12 @@ sub check_conf {
   }
   
   # Check all data locations exist
-  foreach my $confKey ( sort(keys %confData) ) { 
-    if ( not -d $confData{$confKey} ) { 
+  foreach my $confKey ( sort(keys %{ $conf{data} }) ) { 
+    if ( not -d $conf{data}->{$confKey} ) { 
       # Missing data location - Set flag to abort
       $invalidConf = 1;
-      logit(  text    => "Warning: Missing data drive: $confData{$confKey}",
-              message => "Warn: Missing data drive: $confData{$confKey}",
+      logit(  text    => "Warning: Missing data drive: $conf{data}->{$confKey}",
+              message => "Warn: Missing data drive: $conf{data}->{$confKey}",
               level   => 2,
             );
     }
@@ -922,10 +924,10 @@ sub check_conf {
 
   # Check each content file listed exists
   my $anyValidContent = 0;
-  for ( my $i = 0 ; $i <= $#confContent ; $i++ ) {
-    if ( not -e $confContent[$i] ) { 
-      logit(  text    => "Warning: Missing content file: $confContent[$i]",
-              message => "Warn: Missing content file: $confContent[$i]",
+  for ( my $i = 0 ; $i <= $#{ $conf{content} } ; $i++ ) {
+    if ( not -e $conf{content}->[$i] ) { 
+      logit(  text    => "Warning: Missing content file: $conf{content}->[$i]",
+              message => "Warn: Missing content file: $conf{content}->[$i]",
               level   => 2,
             );
     } 
@@ -938,12 +940,12 @@ sub check_conf {
   if ( not $anyValidContent ) { $invalidConf = 1; }
   
   # Check each extra parity file exists
-  for ( my $i = 0 ; $i <= $#confXparity ; $i++ ) {
-    if ( not -e $confXparity[$i] ) { 
+  for ( my $i = 0 ; $i <= $#{ $conf{xparity} } ; $i++ ) {
+    if ( not -e $conf{xparity}->[$i] ) { 
       # Missing extra parity file - Set flag to abort
       $invalidConf = 1;
-      logit(  text    => "Warning: Missing parity file: $confXparity[$i]",
-              message => "Warn: Missing parity file: $confXparity[$i]",
+      logit(  text    => "Warning: Missing parity file: $conf{xparity}->[$i]",
+              message => "Warn: Missing parity file: $conf{xparity}->[$i]",
               level   => 2,
             );
       logit(  text    => 'Warning: Parity not mounted or not built?',

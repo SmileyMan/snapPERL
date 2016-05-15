@@ -4,7 +4,6 @@
            Add email support and messages (Working in v0.1 - Needs more testing on none Gmail setting)
                  
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (Plan v0.3)
-           Add Pre-Hash option to config and script - Snapraid v10.0+ only (Plan v0.3)
            Keep x amount of logs (Plan v0.3)
 
            Limited command line options that overide conf settings (Plan v0.4)
@@ -42,3 +41,4 @@
            Check and confirm conf file when loaded (Done v0.3)
            Check data and parity disks are present (Done v0.3)
            Options to ignore disks not in array or not smart capable (Done v0.3)
+           Add Pre-Hash option to config and script - Snapraid v10.0+ only (Done v0.3)
