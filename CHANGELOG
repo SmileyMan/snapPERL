@@ -3,6 +3,7 @@
             Code added to catch fatal calls to load Modules not installed (Gmail and Email)
             Using snapraid inbuilt logging. snapraid will still carp to STDERR for fatals and this will be picked up
             Snapraid logs are located in log directory and if needed can be consulted for any issues
+            Added user info warnings for older version of Snapraid (New option ins snapPERL.conf)
 
 11/05/2016 v0.2.2
             Added windows support. No help files yet but tested and working. Must have ActivePerl / Strawberry Perl or DWIM Perl installed

@@ -40,3 +40,4 @@
 
            Check and confirm conf file when loaded (Done v0.3)
            Check data and parity disks are present (Done v0.3)
+           Options to ignore disks not in array or not smart capable (Done v0.3)

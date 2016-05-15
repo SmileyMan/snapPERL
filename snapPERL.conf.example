@@ -55,6 +55,7 @@ smartWarn=70                                                  #Chance of fail pe
 smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
 smartMaxDriveTemp=50                                          #Max temp before warnings issued
 smartDiskErrorsWarn=1                                         #Number of errors to send warning regarding disk (Normal setting is 1)
+
  
 ## Snapraid options (Default locations)
 # 
@@ -77,3 +78,4 @@ logLevel=3                                                    #Level of logging 
 messageLevel=3                                                #For pushover/NMA/PushBullet (1:- Critical only 2:- +Warnings 3:- Normal)
 logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P)
 useCustomCmds=0                                               #Load custom pre and post commands from custom-cmds file (optional feature)
+noVersionWarnings=0                                           #Script will give user prompts when runing <10.0 or <9.0 versions of Snapraid - Set to 1 to shut it up

@@ -191,6 +191,21 @@ sub snap_status {
   # Get snapraid version (cmd => 'version' not needed but snapraid ignores it so stndout/stderr files get right name)
   my ( $output, $exitCode ) = snap_run( opt => '--version', cmd => 'version' );
   ( $opt{snapVersion} ) = $output =~ m/snapraid\s+?v(\d+?.\d+?)/i;
+  
+  # Not using a current version of snapraid..
+  if ( $opt{snapVersion} < 10.0 and not $opt{noVersionWarnings} ) {
+    logit(  text    => 'Info: snapPERL tested and works best on snapraid v10.0+',
+            message => 'Info: snapPERL works best on snapraid v10.0+',
+            level   => 3,
+          );
+  }
+  # Very old version - Can not ensure support
+  elsif ( $opt{snapVersion} < 9.0 and not $opt{noVersionWarnings} ) {
+    logit(  text    => 'Info: Snapraid < 9.0 not recomended - Please visit http://www.snapraid.it/download for latest version',
+            message => 'Info: Snapraid < 9.0 not recomended',
+            level   => 3,
+          );
+  }
 
   # Run snapraid status
   ( $output, $exitCode ) = snap_run( opt => '', cmd => 'status' );
