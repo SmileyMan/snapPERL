@@ -8,10 +8,8 @@
 #############################################################################################
 
 #############################################################################################
-# Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
 #
-# Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
-# I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
+# Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
 #
 #############################################################################################
 
@@ -457,6 +455,8 @@ sub snap_smart {
 
   # Holds disk data to be written out
   my %smartDisk;
+  
+  my %checkDisks;
 
   # Counters
   my $totalErrors   = 0; 
@@ -468,10 +468,10 @@ sub snap_smart {
 
     # Match snapraid log for disk info
     # Todo: Not happy with this. Works fine but messy and unreadable... To re-visit
-    if ( $line =~ m/\s+?\d+?\s+?\d+?\s+?\d+?\s+?\d+?%\s+?\d\.\d\s+?[A-Za-z0-9-]+?\s+?[\/a-z]+?\s+?\w+?/i ) {
+    if ( $line =~ m/\s+?\d+?\s+?\d+?\s+?\d+?\s+?\d+?%\s+?\d\.\d\s+?[A-Za-z0-9-]+?\s+?[\/a-z]+?\s+?\w+/i ) {
 
       # Get params
-      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)%\s+?(\d\.\d)\s+?([A-Za-z0-9-]+?)\s+?([\/a-z]+?)\s+?(\w+?)/i;
+      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)%\s+?(\d\.\d)\s+?([A-Za-z0-9-]+?)\s+?([\/a-z]+?)\s+?(\w+)/i;
 
       # Perl grabs these as strings and I want nums to be compared and go into json string
       $temp   = int($temp);
@@ -487,6 +487,7 @@ sub snap_smart {
       $smartDisk{$serial}->{temp}   = $temp;
       $smartDisk{$serial}->{error}  = $error;
       $smartDisk{$serial}->{fp}     = $fp;
+      $smartDisk{$serial}->{disk}   = $disk;
 
       $fp = sprintf( "%02d", $fp );
     
@@ -525,6 +526,12 @@ sub snap_smart {
       }
       else { $smartDisk{$serial}->{errorwarn} = 0; }
 
+      # If disk exceeds settings for running a check add it to the checkDisks hash for processing
+      if ( ($opt{checkSuspectDisks} and not $opt{checkOnlyAfterIncrease}) and $fp > $opt{checkDiskFailPercentage} ) {
+        # Add $fp to send to check_disks();
+        $checkDisks{$disk} = $fp;
+      }
+
     }
     elsif ( $line =~ m/next\s+?year\s+?is/i ) {
 
@@ -542,6 +549,7 @@ sub snap_smart {
         $smartDisk{ARRAY}->{fp}         = int($arrayFail);
         $smartDisk{ARRAY}->{tempwarn}   = 0;
         $smartDisk{ARRAY}->{errorwarn}  = 0;
+        $smartDisk{ARRAY}->{disk}       = 'All';
   
         # Warn if Fail Percentage for Array exceeds limit sit in config
         if ( $arrayFail > $opt{smartWarn} ) {
@@ -596,7 +604,11 @@ sub snap_smart {
                   message => "Warn: FP increased for drive: $key",
                   level   => 2,
                 );
-          
+          # If disk exceeds settings for running a check add it to the checkDisks hash for processing
+          if ( $opt{checkSuspectDisks}  and $smartDisk{$key}->{fp} > $opt{checkDiskFailPercentage} ) {
+            # Add $fp to send to check_disks();
+            $checkDisks{$smartDisk{$key}->{disk}} = $smartDisk{$key}->{fp};
+          }
         } 
         # Errors increased since last run
         if ( $smartDiskIn{$key}->{error} < $smartDisk{$key}->{error} ) {
@@ -623,7 +635,121 @@ sub snap_smart {
             level   => 3,
           );
   }
-                                
+  
+  # Disks added to %checkDisks hash? Well lets process them           
+  if ( %checkDisks ) {
+    #Send ref to this has to check_disks();
+    snap_check( \%checkDisks );
+  }                   
+  return;
+}
+
+## - NOT COMPLETED YET - ONLY OUTLINE
+# sub snap_check
+# Runs snapraid check command on suspect disks with high Fail Percentages
+# usage snap_check( \%hash );
+# return void
+sub snap_check {
+
+  # Get reference to passed hash
+  my $disksToProcess = shift;
+  
+  # Nothing sent then stright back
+  return if ( !%{$disksToProcess} );
+  
+  # Process sent disks
+  foreach my $disk ( keys(%{$disksToProcess}) ) {
+    
+    # Var for options
+    my $options;
+    
+    # Logit
+    logit(  text    => "Starting snapraid check on disk: $disk - Fail Percentage: $disksToProcess->{$disk}% - This proccess will take some time", 
+            message => "Starting snapraid check on disk: $disk",
+            level   => 3,
+         );
+          
+    # Build options
+    $options = "-d $disk";
+    
+    # Add audit only tag
+    if ( $opt{checkAuditOnly} ) { $options .= ' -a'}
+
+    # DEBUG code!
+    #say "DEBUG -> snapraid $options check";
+
+# DEBUG code
+    my $output = q(
+recoverable /media/1000GB1/Array/NAS/SmileyMan/MAIN-PC/Configuration/Catalog2.edb
+recoverable /media/1000GB1/Array/NAS/SmileyMan/MAIN-PC/Configuration/Catalog1.edb
+100% completed, 824854 MB processed in 0:44
+
+     100 errors
+       1 unrecoverable errors
+WARNING! There are errors!
+);
+
+# DEBUG code
+#    my $output = q(
+#damaged /media/1000GB1/Array/NAS/SmileyMan/MAIN-PC/Configuration/Catalog2.edb
+#100% completed, 262874 MB processed in 0:42
+#
+#      50 errors
+#WARNING! There are errors!
+#);
+
+    #my ( $output, $exitCode ) = snap_run( opt => $opt, cmd => 'check' );
+    
+    # Process output
+    foreach my $line ( split(/\n/, $output) ) {
+      
+      if ( $line =~ m/\bdamaged|\brecoverable/i ) {
+
+        # Remove word 'damaged' or 'recoverable' before logging
+        $line =~ s/damaged|recoverable//i;
+        # Remove whitespace
+        $line =~ s/^\s+|\s+$//g;
+        
+        logit(  text    => "Damaged: $line",
+                message => "Damaged file found on check for disk $disk - Check log",
+                level   => 3,
+        );
+        
+        if ( !$opt{checkAutoFix} ) {
+          logit(  text    => "Run: snapraid -f '$line' fix - To correct",
+                  message => '',
+                  level   => 3,
+          );
+        } 
+        else {
+          # Call snapraid to fix - snap_fix sub needed! - Hum... How safe? - Maybe DANGEROUS option
+        }
+
+      }
+      elsif ( $line =~ m/(?<megs>\d+?)\s+?MB\s+?processed/i ) {
+        logit(  text    => "Check completed: Disk: $disk - $+{megs} MB processed",
+                message => "Check completed: Disk: $disk - $+{megs} MB processed",
+                level   => 3,
+        );
+      } 
+      elsif ( $line =~ m/(?<errors>\d+?)\s+?errors/i ) {
+        if ( $+{errors} > 0 ) {
+          logit(  text    => "Warning: Check on disk $disk shows $+{errors} errors",
+                  message => "Warn: Check on disk $disk shows $+{errors} errors",
+                  level   => 2,
+                );
+        }
+      }
+      elsif ( $line =~ m/(?<unrerrors>\d+?)\s+?unrecoverable/i ) {
+        if ( $+{unrerrors} > 0 ) {
+        logit(  text    => "Critical: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
+                message => "Crit: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
+                level   => 1,
+              );
+        }
+      }
+    }
+  }
   return;
 }
 

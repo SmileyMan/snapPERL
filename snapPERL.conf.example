@@ -58,6 +58,13 @@ smartDiskWarn=50                                              #Chance of fail pe
 smartMaxDriveTemp=50                                          #Max temp before warnings issued
 smartDiskErrorsWarn=1                                         #Number of errors to send warning regarding disk (Normal setting is 1)
 
+## Check options (Defaults should work for most - Not enabled by default) - New in v0.3.0 - Do not enable not finished!
+#
+checkSuspectDisks=0                                           #Enable snapraid check on disks with Fail Percentage > checkDiskFailPercentage
+checkAuditOnly=1                                              #Check only suspect disk only not the parity - Recomended setting otherwise very slow
+checkOnlyAfterIncrease=1                                      #Only check once each time Fail Percentage increases over checkDiskFailPercentage (recomended setting)
+checkDiskFailPercentage=80                                    #Fail Percentage to start checking
+checkAutoFix=0                                                #Auto call snapraid to fix recoverable files
  
 ## Snapraid options (Default locations)
 # 
