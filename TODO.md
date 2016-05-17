@@ -3,17 +3,21 @@
 
            Add email support and messages (Working in v0.1 - Needs more testing on none Gmail setting)
                  
-           Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (Plan v0.3)
+           Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (In Process v0.3)
            Keep x amount of logs (Plan v0.3)
 
-           Limited command line options that overide conf settings (Plan v0.4)
-           Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
-           Allow spindown setting per disk (Plan v0.4)
-           Allow smart data per disk (Plan v0.4)
-           Add dup command and report number of duplicates and disk space consumed (Plan v0.4)
+           Change from scraping STDOUT to reading Log Files for command output processing (Plan v0.4)
+           Move Logit messages to external file en_GB.lang to allow translations (Plan v0.4)
 
-           Add NMA support (Plan v0.5)
-           Add Pushbullet support (Plan v0.5)
+           Limited command line options that overide conf settings (Plan v0.5)
+           Add catches for snapraid DANGER! and Warning! messages (Plan v0.5)
+
+           Add NMA support (Plan v0.6)
+           Add Pushbullet support (Plan v0.6)
+
+           Allow spindown setting per disk (Plan v0.7)
+           Allow smart data per disk (Plan v0.7)
+           Add dup command and report number of duplicates and disk space consumed (Plan v0.7)
                       
            Big one - Check and auto update snapraid binary if enabled (Plan v1.0)
            
