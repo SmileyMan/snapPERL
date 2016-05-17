@@ -10,12 +10,11 @@
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.4)
            Allow spindown setting per disk (Plan v0.4)
            Allow smart data per disk (Plan v0.4)
-           Mount and unmount parity (Plan v0.4)
-           Add NMA support (Plan v0.4)
-           Add Pushbullet support (Plan v0.4)
            Add dup command and report number of duplicates and disk space consumed (Plan v0.4)
-           Add option to delete duplicates and re-sync (Adding symbolic refs if wanted) (Plan v0.4)
-           
+
+           Add NMA support (Plan v0.5)
+           Add Pushbullet support (Plan v0.5)
+                      
            Big one - Check and auto update snapraid binary if enabled (Plan v1.0)
            
            Go over code and clean (Ongoing)
@@ -43,3 +42,7 @@
            Check data and parity disks are present (Done v0.3)
            Options to ignore disks not in array or not smart capable (Done v0.3)
            Add Pre-Hash option to config and script - Snapraid v10.0+ only (Done v0.3)
+           
+#Removed
+           Allow smart data per disk (Plan v0.4) - No snapraid support
+           Add option to delete duplicates and re-sync (Adding symbolic refs if wanted) (Plan v0.4) - Breaks underlying rule to not touch data
