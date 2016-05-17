@@ -9,6 +9,7 @@
            Change from scraping STDOUT to reading Log Files for command output processing (Plan v0.4)
            Move Logit messages to external file en_GB.lang to allow translations (Plan v0.4)
 
+           Improve custom commands especialy regarding output and error checks (Plan v0.5)
            Limited command line options that overide conf settings (Plan v0.5)
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.5)
 
@@ -18,9 +19,7 @@
            Allow spindown setting per disk (Plan v0.7)
            Allow smart data per disk (Plan v0.7)
            Add dup command and report number of duplicates and disk space consumed (Plan v0.7)
-                      
-           Big one - Check and auto update snapraid binary if enabled (Plan v1.0)
-           
+  
            Go over code and clean (Ongoing)
            Drink beer! (Ongoing)
 
@@ -50,3 +49,4 @@
 #Removed
            Allow smart data per disk (Plan v0.4) - No snapraid support
            Add option to delete duplicates and re-sync (Adding symbolic refs if wanted) (Plan v0.4) - Breaks underlying rule to not touch data
+           Big one - Check and auto update snapraid binary if enabled (Plan v1.0) - Potentialy dangerous and breaks underlying rule to not touch data
