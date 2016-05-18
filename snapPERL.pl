@@ -526,8 +526,8 @@ sub snap_smart {
       }
       else { $smartDisk{$serial}->{errorwarn} = 0; }
 
-      # If disk exceeds settings for running a check add it to the checkDisks hash for processing
-      if ( ($opt{checkSuspectDisks} and not $opt{checkOnlyAfterIncrease}) and $fp > $opt{checkDiskFailPercentage} ) {
+      # If disk exceeds settings for running a check add it to the checkDisks hash for processing - FP at 100% forces past checkOnlyAfterIncrease
+      if ( ($opt{checkSuspectDisks} and (not $opt{checkOnlyAfterIncrease} or $fp == 100)) and $fp > $opt{checkDiskFailPercentage} ) {
         # Add $fp to send to check_disks();
         $checkDisks{$disk} = $fp;
       }
@@ -663,6 +663,9 @@ sub snap_check {
     # Var for options
     my $options;
     
+    # Var for check log per disk
+    my $filesDamaged;
+    
     # Logit
     logit(  text    => "Starting snapraid check on disk: $disk - Fail Percentage: $disksToProcess->{$disk}% - This proccess will take some time", 
             message => "Starting snapraid check on disk: $disk",
@@ -675,30 +678,7 @@ sub snap_check {
     # Add audit only tag
     if ( $opt{checkAuditOnly} ) { $options .= ' -a'}
 
-    # DEBUG code!
-    #say "DEBUG -> snapraid $options check";
-
-# DEBUG code
-    my $output = q(
-recoverable /media/1000GB1/Array/NAS/SmileyMan/MAIN-PC/Configuration/Catalog2.edb
-recoverable /media/1000GB1/Array/NAS/SmileyMan/MAIN-PC/Configuration/Catalog1.edb
-100% completed, 824854 MB processed in 0:44
-
-     100 errors
-       1 unrecoverable errors
-WARNING! There are errors!
-);
-
-# DEBUG code
-#    my $output = q(
-#damaged /media/1000GB1/Array/NAS/SmileyMan/MAIN-PC/Configuration/Catalog2.edb
-#100% completed, 262874 MB processed in 0:42
-#
-#      50 errors
-#WARNING! There are errors!
-#);
-
-    #my ( $output, $exitCode ) = snap_run( opt => $opt, cmd => 'check' );
+    my ( $output, $exitCode ) = snap_run( opt => $options, cmd => 'check' );
     
     # Process output
     foreach my $line ( split(/\n/, $output) ) {
@@ -710,18 +690,24 @@ WARNING! There are errors!
         # Remove whitespace
         $line =~ s/^\s+|\s+$//g;
         
+        # Add to check log
+        $filesDamaged .= "Damaged: $line";
+        # Logit @ Lv4
         logit(  text    => "Damaged: $line",
                 message => "Damaged file found on check for disk $disk - Check log",
-                level   => 3,
+                level   => 4,
         );
         
         if ( !$opt{checkAutoFix} ) {
+          # Add snapraid repair command to check log
+          $filesDamaged .= "Run: snapraid -f '$line' fix - To correct";
+          # Logit @ Lv4
           logit(  text    => "Run: snapraid -f '$line' fix - To correct",
                   message => '',
-                  level   => 3,
+                  level   => 4,
           );
         } 
-        else {
+        else {          
           # Call snapraid to fix - snap_fix sub needed! - Hum... How safe? - Maybe DANGEROUS option
         }
 
@@ -749,6 +735,20 @@ WARNING! There are errors!
         }
       }
     }
+    
+    # Writeout check log if need (Writes files names found damaged)
+    my $checkLogFile = $opt{logFileLocation} . $slashType . "snapraidCheck-$disk.log";
+    # Write file 
+    my $fileWritten = write_file( filename  => $checkLogFile,
+                                  contents  => \$filesDamaged,
+                                );
+    # Logit if file did not write out
+    if ( !$fileWritten ) {
+      logit(  text    => "Warning: Unable to write check log - Please check $opt{logFileLocation} is writable", 
+              message => 'Warn: Unable to write check log',
+              level   => 2,
+            );
+    }   
   }
   return;
 }
@@ -868,7 +868,6 @@ sub snap_run {
       my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $cmdArgs{cmd} . '.log';
       my $fileWritten = write_file( filename  => $logOutFile,
                                     contents  => \$cmdStderr,
-                                    UTF8      => 0,
                                    );
 
       if ( !$fileWritten ) {

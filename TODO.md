@@ -6,7 +6,7 @@
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (In Process v0.3)
            Keep x amount of logs (Plan v0.3)
 
-           Change from scraping STDOUT to reading Log Files for command output processing (Plan v0.4)
+           Scrape Log Files and STDOUT for command output processing (Plan v0.4)
            Move Logit messages to external file en_GB.lang to allow translations (Plan v0.4)
 
            Improve custom commands especialy regarding output and error checks (Plan v0.5)
