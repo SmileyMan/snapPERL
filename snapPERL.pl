@@ -1342,8 +1342,8 @@ sub email_send {
 }
 
 ##
-# sub send_message();
-# Sends message to various messaging API's 
+# sub send_message_po();
+# Sends message to Pushover API 
 # usage send_message( %options_hash );
 # return void
 sub send_message_po {
@@ -1368,8 +1368,19 @@ sub send_message_po {
   # Priority must be between -2 and 2
   if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
 
-  # Priority 2 can only be used with device name
-  if ( !defined $optHash{poDevice} && $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
+  # Priority 2 can only be used with expire and retry
+  if ( (not defined $optHash{expire} or not defined $optHash{retry}) and $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
+
+  # Make sure expire setting is no less then 30 or more than 86400 seconds
+  if ( defined $optHash{expire} ) { 
+    $optHash{expire} = $optHash{expire} < 30 ? 30 : $optHash{expire}; 
+    $optHash{expire} = $optHash{expire} < 86400 ? 86400 : $optHash{expire};
+  }
+  
+  # Make sure expire setting is no less then 30 seconds
+  if ( defined $optHash{expire} ) { 
+    $optHash{retry} = $optHash{retry} < 30 ? 30 : $optHash{retry}; 
+  }
 
   # Get LWP Agent
   my $userAgent = LWP::UserAgent->new;
