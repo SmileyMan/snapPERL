@@ -1229,7 +1229,7 @@ sub script_comp {
 # sub email_send
 # Send the scriptLog out via email;
 # usage email_send();
-# return void
+# return 0 if unable load modules else undef
 sub email_send {
 
   my $subjectAlert;
@@ -1242,63 +1242,13 @@ sub email_send {
     $subjectAlert = '';
   }
 
-  # Use gmail SMTP to send the email.. System I use.
-  if ( $opt{useGmail} and $opt{emailSend} ) {
+  # Use email.
+  if ( $opt{emailSend} ) {
 
-    # Load on demand need modules for Gmail send
+    # Load on demand need modules for email sending
     my $loadFail;
     eval { autoload Email::Send };            if ($@) { $loadFail += 'Email::Send '; }
-    eval { autoload Email::Send::Gmail };     if ($@) { $loadFail += 'Email::Send::Gmail '; }
     eval { autoload Email::Simple::Creator }; if ($@) { $loadFail += 'Email::Simple::Creator '; }
-    
-    # Modules did not load
-    if ( $loadFail ) {
-      logit(  text    => "Warning: Failed to load modules for Gmail: $loadFail",
-              message => 'Warn: Failed to load modules for Gmail',
-              level   => 2,
-            );
-      # Return to caller with false boolean
-      return 0;
-    }
-    
-    # Create gmail email
-    my $email = Email::Simple->create(
-      header => [
-        From    => $opt{emailSendAddress},
-        To      => $opt{emailAddress},
-        Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
-      ],
-      body => $scriptLog,
-    );
-
-    # Account details for gmail
-    my $sender = Email::Send->new(
-      {
-        mailer      => 'Gmail',
-        mailer_args => [
-          username => $opt{emailAddress},
-          password => $opt{gmailPass},
-        ]
-      }
-    );
-
-    # Send using gmail SMTP
-    eval { $sender->send($email) };
-    if ($@) { 
-      logit(  text    => "Warning: Gmail SMTP email send failed... $@",
-              message => 'Warn: Gmail SMTP email send failed...',
-              level   => 2,
-            );
-    }
-
-  }
-  elsif ( $opt{emailSend} ) {
-
-    # Load on demand needed modules for Email send
-    
-    # Different lexical scope to first var of this name
-    my $loadFail;
-    eval { autoload MIME::Lite; };  if ($@) { $loadFail += 'autoload MIME::Lite; '; }
     
     # Modules did not load
     if ( $loadFail ) {
@@ -1309,36 +1259,125 @@ sub email_send {
       # Return to caller with false boolean
       return 0;
     }
-
-    # Send email via locally configured sendmail server.
-    my $msg = MIME::Lite->new(
-      From    => $opt{emailSendAddress},
-      To      => $opt{emailAddress},
-      Subject => "\[$opt{hostname}\] - snapPERL Log. Please see message body",
-      Data    => $scriptLog,
+    
+    # Create the email!
+    my $email = Email::Simple->create(
+      header => [
+        From    => $opt{emailFromAddress},
+        To      => $opt{emailToAddress},
+        Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
+      ],
+      body => $scriptLog,
     );
 
-    # Send.
-    if ( $opt{emailUseSmtp} ) {
-      eval { $msg->send( 'smtp', $opt{emailSmtpAddress}, Timeout => 60 ) };
-      if ($@) { 
-      logit(  text    => "Warning: SMTP email send failed... $@",
-              message => 'Warn: SMTP email send failed...',
-              level   => 2,
-            );
+    if ( $opt{emailUseSendmail} ) {
+      # Create mail object
+      my $sender = Email::Send->new();
+      # Is sendmail avalible?
+      if ( $sender->mailer_available('Sendmail') ) {
+        # Set mailer
+        $sender->mailer('Sendmail');
+        # Send email
+        my $return = eval { $sender->send($email) };
+        if ($@) { 
+        logit(  text    => "Warning: Sendmail send failed:  $@",
+                message => 'Warn: Sendmail send failed',
+                level   => 2,
+              );
+        }
+        elsif ( $return !~ m/Message\ssent/i ) {
+          logit(  text    => "Warning: Sendmail send failed: $return",
+                  message => 'Warn: Sendmail send failed',
+                  level   => 2,
+                );
+        }
+      }
+      else {
+        logit(  text    => 'Warning: Email::Send::Sendmail not found. Install using sudo cpan Email::Send::Sendmail',
+                message => 'Warn: Email::Send::Sendmail not found',
+                level   => 2,
+              );        
       }
     }
-    else {
-      eval { $msg->send };
-      if ($@) { 
-      logit(  text    => "Warning: Local SMTP email send failed... $@",
-              message => 'Warn: Local SMTP email send failed...',
-              level   => 2,
-            );
+    
+    if ( $opt{emailUseGmail} ) {
+      # Create mail object
+      my $sender = Email::Send->new();
+      # Is sendmail avalible?
+      if ( $sender->mailer_available('Gmail') ) {
+        # Set mailer
+        $sender->mailer('Gmail');
+        # Set args
+        $sender->mailer_args(
+          [
+            username => $opt{gmailUser},
+            password => $opt{gmailPass},
+          ]
+        );
+        # Send email
+        my $return = eval { $sender->send($email) };
+        if ($@) { 
+        logit(  text    => "Warning: Gmail send failed:  $@",
+                message => 'Warn: Gmail send failed',
+                level   => 2,
+              );
+        }
+        elsif ( $return !~ m/Message\ssent/i ) {
+          logit(  text    => "Warning: Gmail send failed: $return",
+                  message => 'Warn: Gmail send failed',
+                  level   => 2,
+                );
+        }
+      }
+      else {
+        logit(  text    => 'Warning: Email::Send::Gmail not found. Install using sudo cpan Email::Send::Gmail',
+                message => 'Warn: Email::Send::Gmail not found',
+                level   => 2,
+              );        
+      }
+    }
+    
+    if ( $opt{emailUseSmtp} ) {
+      # Create mail object
+      my $sender = Email::Send->new();
+      # Is sendmail avalible?
+      if ( $sender->mailer_available('SMTP') ) {
+        # Set mailer
+        $sender->mailer('SMTP');
+        # Set args
+        $sender->mailer_args(
+          [
+            Host      => $opt{emailSmtpAddress},
+            Port      => $opt{emailSmtpPort},
+            username  => $opt{emailSmtpUser},
+            password  => $opt{emailSmtpPass},
+            ssl       => $opt{emailSmtpSSL},
+          ]
+        );
+        # Send email
+        my $return = eval { $sender->send($email) };
+        if ($@) { 
+        logit(  text    => "Warning: SMTP send failed:  $@",
+                message => 'Warn: SMTP send failed',
+                level   => 2,
+              );
+        }
+        elsif ( $return !~ m/Message\ssent/i ) {
+          logit(  text    => "Warning: SMTP send failed: $return",
+                  message => 'Warn: SMTP send failed',
+                  level   => 2,
+                );
+        }
+      }
+      else {
+        logit(  text    => 'Warning: Email::Send::SMTP not found. Install using sudo cpan Email::Send::SMTP',
+                message => 'Warn: Email::Send::SMTP not found',
+                level   => 2,
+              );        
       }
     }
   }
-  return 1;
+  return;
 }
 
 ##

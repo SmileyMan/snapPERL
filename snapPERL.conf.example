@@ -5,15 +5,26 @@
 
 ## Email Options (Optional)
 #
-emailSend=0                                                   #Send email?
-emailAddress=youremail@email.com                              #Email address
-emailSendAddress=youremail@email.com                          #Email address to show has being sent from
+emailSend=0                                                   #Send email? - set to 0 disables all email!
+emailToAddress=youremail@email.com                            #Email address to send logs to
+emailFromAddress=youremail@email.com                          #Email address to show as being sent from
+
+## Sendmail settings (Optional)
+#
+emailUseSendmail=0                                            #use localy configured sendmail?
+
+## Use external SMTP (Optional)
 emailUseSmtp=0                                                #Use none sendmail or external smtp if not using gmail 
 emailSmtpAddress=smtp.yourisp.com                             #SMTP address to use (Needed if emailUseSmtp set)
+emailSmtpPort=25                                              #Normaly Port 25 for normal and 465 for SSL
+emailSmtpSSL=0                                                #Use SSL - Normaly port 465
+emailSmtpUser=                                                #Smtp username if needed
+emailSmtpPass=     
 
 ## Gmail settings (Optional)
 #
-useGmail=0                                                    #Use Gmail to send mail 
+emailUseGmail=0                                               #Use Gmail to send mail
+gmailUser=youremail@gmail.com                                 #Username will be your email address
 gmailPass=yourgmailpass                                       #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
  
 ## Pushover Options (Optional)
