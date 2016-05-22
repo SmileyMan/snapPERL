@@ -5,7 +5,7 @@
                  
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (In Process v0.3)
            Snapraid sends WARNING! messages to stderr. Need to catch these. Currently script aborts for none fatals (v0.3)
-           Add catches for snapraid DANGER! and Warning! messages (Plan v0.5)
+           Add catches for snapraid DANGER! and Warning! messages (Plan v0.3)
            
            Scrape Log Files and STDOUT for command output processing (Plan v0.4)
            Move Logit messages to external file en_GB.lang to allow translations (Plan v0.4)
