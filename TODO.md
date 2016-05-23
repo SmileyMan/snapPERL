@@ -14,6 +14,7 @@
 
            Add NMA support (Plan v0.6)
            Add Pushbullet support (Plan v0.6)
+           Add email TLS support - Change to Email::Sender::SMTPS (Plan v0.6)
 
            Allow spindown setting per disk (Plan v0.7)
            Add dup command and report number of duplicates and disk space consumed (Plan v0.7)
