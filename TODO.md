@@ -1,8 +1,6 @@
 
 #Todo
 
-           Add email support and messages (Working in v0.1 - Needs more testing on none Gmail setting)
-                 
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (In Process v0.3)
            Snapraid sends WARNING! messages to stderr. Need to catch these. Currently script aborts for none fatals (v0.3)
            Add catches for snapraid DANGER! and Warning! messages (Plan v0.3)
@@ -18,7 +16,6 @@
            Add Pushbullet support (Plan v0.6)
 
            Allow spindown setting per disk (Plan v0.7)
-           Allow smart data per disk (Plan v0.7)
            Add dup command and report number of duplicates and disk space consumed (Plan v0.7)
   
            Go over code and clean (Ongoing)
@@ -46,6 +43,7 @@
            Check data and parity disks are present (Done v0.3)
            Options to ignore disks not in array or not smart capable (Done v0.3)
            Add Pre-Hash option to config and script - Snapraid v10.0+ only (Done v0.3)
+           Add email support and messages (All working v0.3))
            
 #Removed
            Allow smart data per disk (Plan v0.4) - No snapraid support
