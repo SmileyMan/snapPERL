@@ -45,8 +45,10 @@ read -n 1 email
 
 if  [ "$email" == "y" ]; then
   echo ""
-  echo "Installing MIME::Lite"
-  cpan install MIME::Lite
+  echo "Installing Email::Send::Sendmail"
+  cpan install Email::Send::Sendmail
+  echo "Installing Email::Send::SMTP"
+  cpan install Email::Send::SMTP
 elif [ "$email" == "n" ]; then
   echo ""
   echo "Email module not installed"

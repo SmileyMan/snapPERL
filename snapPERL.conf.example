@@ -6,26 +6,29 @@
 ## Email Options (Optional)
 #
 emailSend=0                                                   #Send email? - set to 0 disables all email!
-emailToAddress=youremail@email.com                            #Email address to send logs to
-emailFromAddress=youremail@email.com                          #Email address to show as being sent from
 
 ## Sendmail settings (Optional)
 #
 emailUseSendmail=0                                            #use localy configured sendmail?
+emailFromAddress=youremail@email.com                          #Email address to show as being sent from
+emailToAddress=youremail@email.com                            #Email address to send logs to
 
 ## Use external SMTP (Optional)
 emailUseSmtp=0                                                #Use none sendmail or external smtp if not using gmail 
+emailSmtpFromAddress=you@yourisp.com                          #From address for SMTP
+emailSmtpToAddress=you@yourisp.com                            #Address to send logs to using SMTP
 emailSmtpAddress=smtp.yourisp.com                             #SMTP address to use (Needed if emailUseSmtp set)
 emailSmtpPort=25                                              #Normaly Port 25 for normal and 465 for SSL
 emailSmtpSSL=0                                                #Use SSL - Normaly port 465
 emailSmtpUser=                                                #Smtp username if needed
-emailSmtpPass=     
+emailSmtpPass=                                                #Smtp password if needed
 
 ## Gmail settings (Optional)
 #
 emailUseGmail=0                                               #Use Gmail to send mail
-gmailUser=youremail@gmail.com                                 #Username will be your email address
-gmailPass=yourgmailpass                                       #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
+emailGmailToAddress=youremail@gmail.com                      #Email address to send logs to from gmail
+emailGmailUser=youremail@gmail.com                            #Username will be your email address
+emailGmailPass=yourgmailpass                                  #Gmail password to use... Recommend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
  
 ## Pushover Options (Optional)
 #
@@ -61,7 +64,8 @@ scrubPercentage=8                                             #Percentage of arr
 useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
   
 ## Smart options (Defaults will work fine for most people)
-## You must have smartmontools installed - sudo apt-get install smartmontools
+## You must have smartmontools installed on linux - sudo apt-get install smartmontools
+## Snapraid is packaged with smartctl.exe for windows
 #
 smartLog=0                                                    #Check and log Smart data. 
 smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings

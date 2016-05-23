@@ -6,6 +6,8 @@
             Added user info warnings for older version of Snapraid (New option in snapPERL.conf)
             Added Pre-Hash option for sync. Please see manual at http://www.snapraid.it/manual - Snapraid v10.0+ only (New option in snapPERL.conf)
             Compares snapraid.conf against last run and warns if they are different
+            Calls snapraid check on suspect disks. Settings in snapPERL.conf
+            Email re-written. Now only uses Send::Mail::{Sendmail, SMTP, Gmail}
 
 11/05/2016 v0.2.2
             Added windows support. No help files yet but tested and working. Must have ActivePerl / Strawberry Perl or DWIM Perl installed

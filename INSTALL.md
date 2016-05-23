@@ -2,9 +2,11 @@
 
 ### Required Perl Modules - These will autoload on demand
 ~~~
-Email::Send::Gmail (If using gmail)  ->  command: sudo cpan install Email::Send::Gmail
-MIME::Lite         (if using email)  ->  command: sudo cpan install MIME:Lite
-~~~
+Email::Send (If using email)              ->  command: sudo cpan install Email::Send            - (Normaly installed by default)
+Email::Send::SMTP (If using SMTP)         ->  command: sudo cpan install Email::Send::SMTP      - (Normaly installed by default)
+Email::Send::Sendmail (If using Sendmail) ->  command: sudo cpan install Email::Send::Sendmail  - (Normaly installed by default)
+Email::Send::Gmail (If using gmail)       ->  command: sudo cpan install Email::Send::Gmail
+~~~ 
 
 ##Windows: 
 

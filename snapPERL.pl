@@ -1231,10 +1231,9 @@ sub script_comp {
 # usage email_send();
 # return 0 if unable load modules else undef
 sub email_send {
-
-  my $subjectAlert;
-
+  
   # Add alert to subject line if warnings or errors encountered.
+  my $subjectAlert;
   if ( $opt{minLogLevel} < 3 ) {
     $subjectAlert = $opt{minLogLevel} < 2 ? 'Critical' : 'Warning';
   }
@@ -1259,16 +1258,6 @@ sub email_send {
       # Return to caller with false boolean
       return 0;
     }
-    
-    # Create the email!
-    my $email = Email::Simple->create(
-      header => [
-        From    => $opt{emailFromAddress},
-        To      => $opt{emailToAddress},
-        Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
-      ],
-      body => $scriptLog,
-    );
 
     if ( $opt{emailUseSendmail} ) {
       # Create mail object
@@ -1277,15 +1266,24 @@ sub email_send {
       if ( $sender->mailer_available('Sendmail') ) {
         # Set mailer
         $sender->mailer('Sendmail');
+        # Create the email!
+        my $email = Email::Simple->create(
+          header => [
+                      From  => $opt{emailFromAddress}, 
+                      To    => $opt{emailToAddress}, 
+                      Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
+                    ],
+          body => $scriptLog,
+        );
         # Send email
         my $return = eval { $sender->send($email) };
         if ($@) { 
-        logit(  text    => "Warning: Sendmail send failed:  $@",
+        logit(  text    => "Warning: Sendmail send failed:-  $@",
                 message => 'Warn: Sendmail send failed',
                 level   => 2,
               );
         }
-        elsif ( $return !~ m/Message\ssent/i ) {
+        elsif ( $return !~ m/Message\ssent/i or $return != 1 ) {
           logit(  text    => "Warning: Sendmail send failed: $return",
                   message => 'Warn: Sendmail send failed',
                   level   => 2,
@@ -1293,7 +1291,7 @@ sub email_send {
         }
       }
       else {
-        logit(  text    => 'Warning: Email::Send::Sendmail not found. Install using sudo cpan Email::Send::Sendmail',
+        logit(  text    => 'Warning: Email::Send::Sendmail not found. Please install Cpan module Email::Send::Sendmail',
                 message => 'Warn: Email::Send::Sendmail not found',
                 level   => 2,
               );        
@@ -1310,9 +1308,18 @@ sub email_send {
         # Set args
         $sender->mailer_args(
           [
-            username => $opt{gmailUser},
-            password => $opt{gmailPass},
+            username => $opt{emailGmailUser},
+            password => $opt{emailGmailPass},
           ]
+        );
+        # Create the email!    
+        my $email = Email::Simple->create(
+          header => [
+                      From  => $opt{emailGmailUser}, 
+                      To    => $opt{emailGmailToAddress}, 
+                      Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
+                    ],
+          body => $scriptLog,
         );
         # Send email
         my $return = eval { $sender->send($email) };
@@ -1322,7 +1329,7 @@ sub email_send {
                 level   => 2,
               );
         }
-        elsif ( $return !~ m/Message\ssent/i ) {
+        elsif ( $return != 1 ) {
           logit(  text    => "Warning: Gmail send failed: $return",
                   message => 'Warn: Gmail send failed',
                   level   => 2,
@@ -1330,7 +1337,7 @@ sub email_send {
         }
       }
       else {
-        logit(  text    => 'Warning: Email::Send::Gmail not found. Install using sudo cpan Email::Send::Gmail',
+        logit(  text    => 'Warning: Email::Send::Gmail not found. Please install Cpan module Email::Send::Gmail',
                 message => 'Warn: Email::Send::Gmail not found',
                 level   => 2,
               );        
@@ -1354,15 +1361,24 @@ sub email_send {
             ssl       => $opt{emailSmtpSSL},
           ]
         );
+        # Create the email!    
+        my $email = Email::Simple->create(
+          header => [
+                      From  => $opt{emailSmtpFromAddress}, 
+                      To    => $opt{emailSmtpToAddress}, 
+                      Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
+                    ],
+          body => $scriptLog,
+        );
         # Send email
         my $return = eval { $sender->send($email) };
         if ($@) { 
-        logit(  text    => "Warning: SMTP send failed:  $@",
+        logit(  text    => "Warning: SMTP send failed:-  $@",
                 message => 'Warn: SMTP send failed',
                 level   => 2,
               );
         }
-        elsif ( $return !~ m/Message\ssent/i ) {
+        elsif ( $return !~ m/Message\ssent/i or $return != 1 ) {
           logit(  text    => "Warning: SMTP send failed: $return",
                   message => 'Warn: SMTP send failed',
                   level   => 2,
@@ -1370,7 +1386,7 @@ sub email_send {
         }
       }
       else {
-        logit(  text    => 'Warning: Email::Send::SMTP not found. Install using sudo cpan Email::Send::SMTP',
+        logit(  text    => 'Warning: Email::Send::SMTP not found. Please install Cpan module Email::Send::SMTP',
                 message => 'Warn: Email::Send::SMTP not found',
                 level   => 2,
               );        
@@ -1516,6 +1532,10 @@ sub custom_cmds {
     for ( my $i = 0 ; $i <= $#{ $customCmds{$type} } ; $i++ ) {
 
       # Run command
+      logit(  text    => "Running custom $type command: $customCmds{$type}->[$i]",
+              message => '',
+              level   => 3,
+            );
       eval { system( $customCmds{$type}->[$i] ) };
       if ($@) { 
       logit(  text    => "Warning: Custom-cmd: $customCmds{$type}->[$i] failed... $@",
