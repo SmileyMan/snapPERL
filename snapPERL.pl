@@ -187,8 +187,11 @@ script_comp();
 # return void
 sub snap_status {
 
+  # Define call return vars
+  my ($output, $exitCode, $snapLog);
+
   # Get snapraid version (cmd => 'version' not needed but snapraid ignores it so stndout/stderr files get right name)
-  my ( $output, $exitCode ) = snap_run( opt => '--version', cmd => 'version' );
+  ( $output, $exitCode ) = snap_run( opt => '--version', cmd => 'version' );
   ( $opt{snapVersion} ) = $output =~ m/snapraid\s+?v(\d+?.\d+?)/i;
   
   # Not using a current version of snapraid..
@@ -207,7 +210,7 @@ sub snap_status {
   }
 
   # Run snapraid status
-  ( $output, $exitCode ) = snap_run( opt => '', cmd => 'status' );
+  ( $output, $exitCode, $snapLog ) = snap_run( opt => '', cmd => 'status', snaplog => 1);
 
   # Critical error. Status shows errors detected.
   if ( $output !~ m/No\s+?error\s+?detected/i ) { 
@@ -819,20 +822,21 @@ sub snap_pool {
 ##
 # sub snap_run
 # Run a snapraid command
-# usage snap_run( opt => 'options', cmd => 'command', stderr => '0|1' );
-# returns stdout, exitcode, *opt stderr
+# usage snap_run( opt => 'options', cmd => 'command', snaplog => 0|1, stderr => 0|1 );
+# returns stdout, exitcode, *opt snaplog, *opt stderr (Will return all four but opt will be undef if not called for)
 sub snap_run {
 
   # Get passed args
   my %cmdArgs    = @_;
-  my $snapraidLogFile = $opt{logFileLocation} . $slashType . "snapraid-$cmdArgs{cmd}-log.tmp";
-  my $stderrFile      = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stderr.tmp";
-  my $stdoutFile      = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stdout.tmp";
+  
+  # Define file names - sndout/stderr/log are all saved for each command between runs - Any issues lots of logs to check back on
+  my $snapLogFile = $opt{logFileLocation}     . $slashType . "snapraid-$cmdArgs{cmd}.log";
+  my $stderrFile  = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stderr.tmp";
+  my $stdoutFile  = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stdout.tmp";
 
   # Build command
-  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapraidLogFile -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
-  #my @snapCmd     = ( "$opt{snapRaidBin}", "-c $opt{snapRaidConf}", "-l $snapraidLogFile", '-v',  "$cmdArgs{opt}", "$cmdArgs{cmd}" );
-  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapraidLogFile -v $cmdArgs{opt} $cmdArgs{cmd}";
+  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapLogFile -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
+  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapLogFile -v $cmdArgs{opt} $cmdArgs{cmd}";
 
   # Log command to be run
   logit(  text    => "Running: $snapCmdLog",
@@ -852,77 +856,50 @@ sub snap_run {
     $exitCode = system($snapCmd);
   }
 
-  # Slurp in stndout/stderr from last call
-  my $cmdStderr = slurp_file($stderrFile);
-  my $cmdStdout = slurp_file($stdoutFile);
+  # Slurp in stndout/stderr/log from last call
+  my $cmdStdout   = slurp_file($stdoutFile);
+  # Slurp in only if requested by caller;
+  my $cmdLogData;
+  if ( $cmdArgs{snaplog} ) { $cmdLogData = slurp_file($snapLogFile); }
+  # Slurp in only if requested by caller;
+  my $cmdStderr;
+  if ( $cmdArgs{stderr} ) { $cmdStderr = slurp_file($stderrFile); }
   
-  if ( defined $cmdStderr ) {
-
-    # Get file size of stderr file
-    my @stderrStat = stat $stderrFile;
-
-    # stderr file is NOT empty indicating snapraid wrote to stderr
-    if ( $stderrStat[7] > 0 ) {
-
-      # Write it to log
-      my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $cmdArgs{cmd} . '.log';
-      my $fileWritten = write_file( filename  => $logOutFile,
-                                    contents  => \$cmdStderr,
-                                   );
-
-      if ( !$fileWritten ) {
-        logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 
-                message => "Warn: Unable to write log Stderr",
-                level   => 2,
-              );
-      }
-      
-      # Abort script and request user to investigate if critical call
-      if ( $cmdArgs{cmd} =~ m/sync|scrub|status|diff/i ) {
-        logit(  text    => "Critical: stderr file size: $stderrStat[7] -- Exit code: $exitCode", 
-                message => "Crit: Snapraid error -- Exit code: $exitCode",
-                level   => 1,
-            );
-        logit(  text    => "Abort: Snapraid $cmdArgs{cmd} reports errors. Please check snapraid stderr file:- $stderrFile",
-                message => "Abort: Snapraid $cmdArgs{cmd} reports errors",
-                level   => 2,
-                abort   => 1,
-          ); 
-      } 
-      else { 
-        # Logit for investigation
-        logit(  text    => "Warning: Snapraid issues with cmd: $cmdArgs{cmd} - Please see log: $logOutFile",
-                message => "Warn: Check log: $logOutFile",
-                level   => 2,
-              );
-      }
-    }
-  }
-  else {
-    logit(  text    => "Warning: unable to read stderr file: $stderrFile - Please check $opt{snapRaidTmpLocation} is writable",
-            message => 'Warn: unable to read stderr file',
-            level   => 2,
-          );
-  }
-
-  if ( defined $cmdStdout ) {
-    #Pass stdout / exitcode back to caller
-    if ( $cmdArgs{stderr} ) {
-      return ( $cmdStdout, $exitCode, $cmdStderr );
-    }
-    else {
-      return ( $cmdStdout, $exitCode );
-    }
-  }
-  else {
+  # Check we have the information needed to proceed
+  if ( not defined $cmdStdout and $cmdArgs{stderr} ) {
     logit(  text    => "Abort: Unable to read stndout file:- $stdoutFile - Please check $opt{snapRaidTmpLocation} is writable",
             message => 'Abort: Unable to read stndout file',
             level   => 2,
             abort   => 1,
           );
   }
+  elsif ( not defined $cmdLogData  and $cmdArgs{snaplog} ) {
+    logit(  text    => "Abort: Unable to read log file:- $snapLogFile - Please check $opt{logFileLocation} is writable",
+            message => 'Abort: Unable to read log file',
+            level   => 2,
+            abort   => 1,
+          );
+  }
+  
+  
+  # Get file size of stderr file
+  my @stderrStat = stat $stderrFile;
 
-  return;
+  # stderr file is NOT empty indicating snapraid wrote to stderr
+  if ( $stderrStat[7] > 0 and $cmdArgs{snaplog} ) {
+    # Snaprard wrote to stderr. Add this to log for further investigation
+    # I did abort here but found out snapraid writes to stderr for none fatal warnings
+    # Can not trust that Exit Code:0 only means OK so pass back to caller for some checking
+    $cmdLogData .= "msg:status:snderr:size:$stderrStat[7]";
+  }
+  else {
+    # stnderr empty :P
+    $cmdLogData .= 'msg:status:snderr:size:0';
+  }
+
+  # Pass stdout / exitcode / log / stderr back to caller
+  return ( $cmdStdout, $exitCode, $cmdLogData, $cmdStderr );
+
 }
 
 ##
@@ -1739,7 +1716,7 @@ sub compare_data_structure {
       if ( $dataRef1->[$i] ne $dataRef2->[$i] ) {
         if ( (ref $dataRef1->[$i] eq 'HASH' and ref $dataRef2->[$i] eq 'HASH') or (ref $dataRef1->[$i] eq 'ARRAY' and ref $dataRef2->[$i] eq 'ARRAY') ) {
           # Recursive call on self
-          if ( !compare_data_structure(${$dataRef1}[$i], ${$dataRef2}[$i]) ) { return 0; }
+          if ( !compare_data_structure($dataRef1->[$i], $dataRef2->[$i]) ) { return 0; }
         }
         else { 
           # Return false
