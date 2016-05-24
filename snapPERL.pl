@@ -1680,6 +1680,74 @@ sub write_file {
 }
 
 ##
+# sub save_json();
+# Encode and write json data to file
+# usage load_json( filename, \%@data );
+# returns 1 if success and 0 if not
+sub save_json {
+  
+  # Get incomming data
+  my $jsonFileName  = shift;
+  my $dataRef       = shift;
+  
+  # Json object
+  my $json = JSON::PP->new;
+  $json = $json->canonical(1);
+  
+  # Encode incomming data to json
+  my $jsonOut = $json->encode($dataRef);
+
+  # Write out to json directory
+  my $fileWritten = write_file( filename  => $jsonFileName,
+                                contents  => \$jsonOut,
+                               );
+  # File written OK?
+  if ( !$fileWritten ) {
+    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Warn: Unable to write to json dir',
+            level   => 2,
+          );
+    return 0;
+  }
+  else {
+    # Success return 1
+    return 1;
+  }
+  return;
+}
+
+##
+# sub load_json();
+# Read json data from file and decode
+# usage load_json( filename );
+# returns json data ref if success and undef if not
+sub load_json {
+  
+  # Get json file name
+  my $jsonFileName = shift;
+   
+  # Create Json object
+  my $json = JSON::PP->new;
+  $json = $json->canonical(1);
+ 
+  # Load json file 
+  my $jsonIn = slurp_file($jsonFileName);
+ 
+  # Decode and return json
+  if ( $jsonIn ) {
+    # Decode json
+    my $jsonRef = $json->decode($jsonIn);
+    # Return ref to json data
+    return $jsonRef;      
+  }
+  else {
+    # Invalid then return undef;
+    return;
+  }   
+  return;
+}
+
+##
 # sub comp_data_structure();
 # Compare two data structures you expect to be identical
 # Recursive self calling. Will follow down no mater how many levels or types
