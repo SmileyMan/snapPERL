@@ -1,9 +1,6 @@
 
 #Todo
 
-           Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (In Process v0.3 - Needs max run period setting)
-           Add catches for snapraid DANGER! and Warning! messages (In Process v0.3)
-           
            Scrape Log Files and STDOUT for command output processing (Plan v0.4)
            Move Logit messages to external file en_GB.lang to allow translations (Plan v0.4)
 
@@ -45,6 +42,9 @@
            Add Pre-Hash option to config and script - Snapraid v10.0+ only (Done v0.3)
            Add email support and messages (All working v0.3)
            Snapraid sends WARNING! messages to stderr. Need to catch these. Currently script aborts for none fatals (Done v0.3)
+           Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (Done v0.3)
+           Add catches for snapraid DANGER! messages (Done v0.3)
+           Option to enforce minimum days between syncs (Done v0.3)
            
 #Removed
            Allow smart data per disk (Plan v0.4) - No snapraid support
