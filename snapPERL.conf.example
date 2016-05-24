@@ -57,11 +57,12 @@ changedFiles=500                                              #Max amount of cha
 
 ## Scrub options (Defaults will work fine for most people)
 #
-scrubDays=7                                                   #Number of days before scrub is run 
+scrubNewest=7                                                 #Age of newest un-scrubed block before scub is run (useScrubNew will overide)
 scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
 scrubAge=10                                                   #Data older than days
 scrubPercentage=8                                             #Percentage of array to scrub
 useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
+scrubEnforceMinDays=0                                         #Overides all settings until time specifed in days elapses (Except useScrubNew - Turn off to scrub only at this interval)
   
 ## Smart options (Defaults will work fine for most people)
 ## You must have smartmontools installed on linux - sudo apt-get install smartmontools
@@ -78,7 +79,8 @@ smartDiskErrorsWarn=1                                         #Number of errors 
 checkSuspectDisks=0                                           #Enable snapraid check on disks with Fail Percentage > checkDiskFailPercentage
 checkAuditOnly=1                                              #Check only suspect disk only not the parity - Recomended setting otherwise very slow
 checkOnlyAfterIncrease=1                                      #Only check once each time Fail Percentage increases over checkDiskFailPercentage (recomended setting)
-checkDiskFailPercentage=80                                    #Fail Percentage to start checking
+checkDiskFailPercentage=90                                    #Fail Percentage to start checking
+checkMinTimeBetweenChecks=7                                   #Minimum time that must pass between checks on suspect disks in days
 checkAutoFix=0                                                #Auto call snapraid to fix recoverable files
  
 ## Snapraid options (Default locations)

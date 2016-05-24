@@ -26,9 +26,9 @@ use Module::Load;     # Perl core module for on demand loading of optional modul
 use File::Spec;       # Used to read absolute path
 use LWP::UserAgent;   # Send Post/Get (For messaging support)
 use JSON::PP;         # Encode data to JSON for storage
-use Data::Dumper;     # Debug use
+#use Data::Dumper;     # Debug use
 
-our $VERSION = 0.2.2;
+our $VERSION = 0.3.0;
 
 ############################## Script only from here ########################################
 
@@ -117,29 +117,57 @@ else {
         );
 }
 
-# Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will always be 0.
-# So second check on oldest scrubbed block is made and scrub called if needed.
-if ( $opt{scrubNewDays} >= $opt{scrubDays} or $opt{scrubOldDays} >= $opt{scrubOldest} ) {
-
-  # Do not scrub un sync'ed array!
-  if ($opt{syncSuccess}) {
-    logit(  text    => "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 
-            message => "Running scrub - Last: $opt{scrubNewDays} - Oldest: $opt{scrubOldDays}",
-            level   => 3,
-          );
-    snap_scrub( plan => "$opt{scrubPercentage}", age => "$opt{scrubAge}" );
+# Use scrubEnforceMinDays option to enforce minimum days between scrubs
+if ( $opt{scrubEnforceMinDays} ) {
+  # Location of json file
+  my $jsonFile = $opt{jsonFileLocation} . $slashType .  'scrublast.json'; 
+   
+  # Save json and end warning if failed to save
+  my $scrubLastRef = load_json( $jsonFile );
   
+  # Get time
+  my $timeNow = time();
+  
+  # Check if enougth time as passed
+  if ( $scrubLastRef->{lastScrubTime} and $scrubLastRef->{lastScrubTime} > $timeNow - ($opt{scrubEnforceMinDays} * 86400) ) {
+    $opt{scrubMinDaysEnforced} = 1;
+  } 
+}
+
+# Stop scrub if scrubEnforceMinDays in effect and min days not passed
+if ( !$opt{scrubMinDaysEnforced} ) {
+  
+  # Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will always be 0.
+  # So second check on oldest scrubbed block is made and scrub called if needed.
+  if ( $opt{scrubNewDays} >= $opt{scrubNewest} or $opt{scrubOldDays} >= $opt{scrubOldest} ) {
+  
+    # Do not scrub un sync'ed array!
+    if ($opt{syncSuccess} or not $diffHash{sync} ) {
+      logit(  text    => "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 
+              message => "Running scrub - Last: $opt{scrubNewDays} - Oldest: $opt{scrubOldDays}",
+              level   => 3,
+            );
+      snap_scrub( plan => "$opt{scrubPercentage}", age => "$opt{scrubAge}" );
+    
+    }
+    else {
+      logit(  text    => 'Sync was not run. Scrub only performed after successful sync', 
+              message => 'No sync so Scrub not performed}',
+              level   => 3,
+            );  
+    }
   }
   else {
-    logit(  text    => 'Sync was not run. Scrub only performed after successful sync', 
-            message => 'No sync so Scrub not performed}',
+    logit(  text    => "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}",
+            message => 'No post sync scrub needed',
             level   => 3,
-          );  
+          );
   }
 }
 else {
-  logit(  text    => "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}",
-          message => 'No post sync scrub needed',
+  # Log that scrubEnforceMinDays not passed
+  logit(  text    => "No Scrub: Days since last scrub does not exceed min setting of: $opt{scrubEnforceMinDays} days",
+          message => 'No Scrub. Enforce Min Days in effect',
           level   => 3,
         );
 }
@@ -229,6 +257,15 @@ sub snap_status {
             abort   => 1,
           ); 
   }
+  
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
+  }
 
   # Check for zero sub-second timestamps and correct.
   if ( $output =~ m/You\s+?have\s+?(?<timeStamps>\d+?)\s+?files/i ) {
@@ -290,7 +327,16 @@ sub snap_status {
 sub snap_diff {
 
   # Run snapraid diff
-  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'diff' );
+  my ( $output, $exitCode, $snapLog ) = snap_run( opt => '', cmd => 'diff', snaplog => 1 );
+
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
+  }
 
   # Add each diff value to %diffHash
   foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
@@ -333,15 +379,24 @@ sub snap_sync {
   my $excludedCount = 0;
   my ( $dataProcessed, $fullLog );
   
-  my ( $output, $exitCode );
+  my ( $output, $exitCode, $snapLog );
   # Use pre-hash on sync? Snapraid version must be 10.0+
   if ( $opt{preHashOnSync} and $opt{snapVersion} >= 10.0 ) { 
     # Run snapraid sync command with pre-hash - Recommended on v10.0
-    ( $output, $exitCode ) = snap_run( opt => '-h', cmd => 'sync' );    
+    ( $output, $exitCode, $snapLog ) = snap_run( opt => '-h', cmd => 'sync', snaplog => 1 );    
   }
   else {
     # Run snapraid sync command no pre-hash
-    ( $output, $exitCode ) = snap_run( opt => '', cmd => 'sync' );  
+    ( $output, $exitCode, $snapLog ) = snap_run( opt => '', cmd => 'sync', snaplog => 1 );  
+  }
+
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
   }
 
   # Process output
@@ -416,7 +471,16 @@ sub snap_scrub {
   if ( $cmdArgs{plan} ) { $cmdArgs{plan} = "-p $cmdArgs{plan}"; }
   if ( $cmdArgs{age} )  { $cmdArgs{age}  = "-o $cmdArgs{age}";  }
 
-  my ( $output, $exitCode ) = snap_run( opt => "$cmdArgs{plan} $cmdArgs{age}", cmd => 'scrub' );
+  my ( $output, $exitCode, $snapLog ) = snap_run( opt => "$cmdArgs{plan} $cmdArgs{age}", cmd => 'scrub', snaplog => 1 );
+
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
+  }
 
   #Get size of data processed
   if ( $output =~ m/completed/i ) { ( $dataProcessed ) = $output =~ m/completed,?\s+?(\d+?)\s+?MB processed/i; }
@@ -443,6 +507,23 @@ sub snap_scrub {
             abort   => 1,
           ); 
   }
+  
+  if ( $opt{scrubEnforceMinDays} ) {
+
+    my $timeNow = time();
+    my $scrubTime = { lastScrubTime => $timeNow };
+  
+    # Location of json file
+    my $jsonFile = $opt{jsonFileLocation} . $slashType .  'scrublast.json'; 
+   
+    # Save json and end warning if failed to save
+    if ( !save_json( $jsonFile, $scrubTime ) ) {
+      logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+              message => 'Warn: Unable to write to json dir',
+              level   => 2,
+            );
+    }
+  }  
   return;
 }
 
@@ -576,25 +657,16 @@ sub snap_smart {
   # Location of Json file for smart data
   my $jsonSmartFile = $opt{jsonFileLocation} . $slashType .  'smartout.json';
 
-  # Load json conf from last run 
-  my $preSmart = slurp_file($jsonSmartFile);
- 
-  # Decode json to hash
-  my $smartDiskInRef;
-  my %smartDiskIn;
-  if ( $preSmart ) { 
-    $smartDiskInRef = decode_json $preSmart; 
-    %smartDiskIn = %{$smartDiskInRef}
-  }
-  
-  
+  # Load json as a data reference
+  my $smartDiskInRef = load_json($jsonSmartFile);
+
   # Data from last run
-  if ( %smartDiskIn ) {
-    foreach my $key (keys %smartDiskIn) {
+  if ( %{$smartDiskInRef} ) {
+    foreach my $key (keys %{$smartDiskInRef} ) {
       # Valid key in new hash to compare
       if ( exists $smartDisk{$key} ) {
         # Temp increased since last run and warn sent
-        if ( ($smartDiskIn{$key}->{temp} < $smartDisk{$key}->{temp}) and $smartDisk{$key}->{tempwarn} ) {
+        if ( ($smartDisk{$key}->{temp} > $smartDiskInRef->{$key}{temp}) and $smartDisk{$key}->{tempwarn} ) {
           logit(  text    => "Warning: Temp of drive: $key increased since last run",
                   message => "Warn: Temp increased for drive: $key",
                   level   => 2,
@@ -602,7 +674,7 @@ sub snap_smart {
           
         } 
         # Fail percentage increased since last run
-        if ( $smartDiskIn{$key}->{fp} < $smartDisk{$key}->{fp} ) {
+        if ( $smartDisk{$key}->{fp} > $smartDiskInRef->{$key}{fp} ) {
           logit(  text    => "Warning: Fail Percentage of drive: $key increased since last run",
                   message => "Warn: FP increased for drive: $key",
                   level   => 2,
@@ -614,7 +686,7 @@ sub snap_smart {
           }
         } 
         # Errors increased since last run
-        if ( $smartDiskIn{$key}->{error} < $smartDisk{$key}->{error} ) {
+        if ( $smartDisk{$key}->{error} > $smartDiskInRef->{$key}{error} ) {
           logit(  text    => "Warning: Errors of drive: $key increased since last run",
                   message => "Warn: Errors increased for drive: $key",
                   level   => 2,
@@ -624,21 +696,15 @@ sub snap_smart {
       }
     }
   }
-
-  # Encode smartdata to json
-  my $smartDiskOut = encode_json \%smartDisk;
-
-  # Write out to json directory
-  my $fileWritten = write_file( filename  => $jsonSmartFile,
-                                contents  => \$smartDiskOut,
-                               );
-  if ( !$fileWritten ) {
-    logit(  text    => "Info: Unable to write to: $opt{jsonFileLocation}",
-            message => 'Info: Unable to write to json dir',
-            level   => 3,
+  
+  # Save json and end warning if failed to save
+  if ( !save_json( $jsonSmartFile, \%smartDisk ) ) {
+    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Warn: Unable to write to json dir',
+            level   => 2,
           );
   }
-  
+
   # Disks added to %checkDisks hash? Well lets process them           
   if ( %checkDisks ) {
     #Send ref to this has to check_disks();
@@ -647,7 +713,6 @@ sub snap_smart {
   return;
 }
 
-## - NOT COMPLETED YET - ONLY OUTLINE
 # sub snap_check
 # Runs snapraid check command on suspect disks with high Fail Percentages
 # usage snap_check( \%hash );
@@ -658,101 +723,141 @@ sub snap_check {
   my $disksToProcess = shift;
   
   # Nothing sent then stright back
-  return if ( !%{$disksToProcess} );
+  return unless ( %{$disksToProcess} );
+    
+  # Location of Json file for smart data
+  my $jsonCheckFile = $opt{jsonFileLocation} . $slashType .  'checkfile.json';
+
+  # Load json as a data reference
+  my $checkInRef = load_json($jsonCheckFile);
+  
+  # Get current time
+  my $timeNow = time();
   
   # Process sent disks
   foreach my $disk ( keys(%{$disksToProcess}) ) {
     
-    # Var for options
-    my $options;
-    
-    # Var for check log per disk
-    my $filesDamaged;
-    
-    # Logit
-    logit(  text    => "Starting snapraid check on disk: $disk - Fail Percentage: $disksToProcess->{$disk}% - This proccess will take some time", 
-            message => "Starting snapraid check on disk: $disk",
-            level   => 3,
-         );
-          
-    # Build options
-    $options = "-d $disk";
-    
-    # Add audit only tag
-    if ( $opt{checkAuditOnly} ) { $options .= ' -a'}
-
-    my ( $output, $exitCode ) = snap_run( opt => $options, cmd => 'check' );
-    
-    # Process output
-    foreach my $line ( split(/\n/, $output) ) {
+    # Dont run check if one has been run within checkMinTimeBetweenChecks days
+    if ( $checkInRef->{$disk} < $timeNow - ($opt{checkMinTimeBetweenChecks} * 86400) ) {
+  
+      # Var for options
+      my $options;
       
-      if ( $line =~ m/\bdamaged|\brecoverable/i ) {
-
-        # Remove word 'damaged' or 'recoverable' before logging
-        $line =~ s/damaged|recoverable//i;
-        # Remove whitespace
-        $line =~ s/^\s+|\s+$//g;
+      # Var for check log per disk
+      my $filesDamaged;
+      
+      # Logit
+      logit(  text    => "Starting snapraid check on disk: $disk - Fail Percentage: $disksToProcess->{$disk}% - This proccess will take some time", 
+              message => "Starting snapraid check on disk: $disk",
+              level   => 3,
+           );
+            
+      # Build options
+      $options = "-d $disk";
+      
+      # Add audit only tag
+      if ( $opt{checkAuditOnly} ) { $options .= ' -a'}
+  
+      my ( $output, $exitCode ) = snap_run( opt => $options, cmd => 'check' );
+      
+      # Process output
+      foreach my $line ( split(/\n/, $output) ) {
         
-        # Add to check log
-        $filesDamaged .= "Damaged: $line";
-        # Logit @ Lv4
-        logit(  text    => "Damaged: $line",
-                message => "Damaged file found on check for disk $disk - Check log",
-                level   => 4,
-        );
-        
-        if ( !$opt{checkAutoFix} ) {
-          # Add snapraid repair command to check log
-          $filesDamaged .= "Run: snapraid -f '$line' fix - To correct";
+        if ( $line =~ m/\bdamaged|\brecoverable/i ) {
+  
+          # Remove word 'damaged' or 'recoverable' before logging
+          $line =~ s/damaged|recoverable//i;
+          # Remove whitespace
+          $line =~ s/^\s+|\s+$//g;
+          
+          # Add to check log
+          $filesDamaged .= "Damaged: $line";
           # Logit @ Lv4
-          logit(  text    => "Run: snapraid -f '$line' fix - To correct",
-                  message => '',
+          logit(  text    => "Damaged: $line",
+                  message => "Damaged file found on check for disk $disk - Check log",
                   level   => 4,
           );
-        } 
-        else {          
-          # Call snapraid to fix - snap_fix sub needed! - Hum... How safe? - Maybe DANGEROUS option
+          
+          if ( !$opt{checkAutoFix} ) {
+            # Add snapraid repair command to check log
+            $filesDamaged .= "Run: snapraid -f '$line' fix - To correct";
+            # Logit @ Lv4
+            logit(  text    => "Run: snapraid -f '$line' fix - To correct",
+                    message => '',
+                    level   => 4,
+            );
+          } 
+          else {          
+            # Call snapraid to fix - snap_fix sub needed! - Hum... How safe? - Maybe DANGEROUS option
+          }
+  
         }
-
+        elsif ( $line =~ m/(?<megs>\d+?)\s+?MB\s+?processed/i ) {
+          logit(  text    => "Check completed: Disk: $disk - $+{megs} MB processed",
+                  message => "Check completed: Disk: $disk - $+{megs} MB processed",
+                  level   => 3,
+          );
+        } 
+        elsif ( $line =~ m/(?<errors>\d+?)\s+?errors/i ) {
+          if ( $+{errors} > 0 ) {
+            logit(  text    => "Warning: Check on disk $disk shows $+{errors} errors",
+                    message => "Warn: Check on disk $disk shows $+{errors} errors",
+                    level   => 2,
+                  );
+          }
+        }
+        elsif ( $line =~ m/(?<unrerrors>\d+?)\s+?unrecoverable/i ) {
+          if ( $+{unrerrors} > 0 ) {
+          logit(  text    => "Critical: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
+                  message => "Crit: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
+                  level   => 1,
+                );
+          }
+        }
       }
-      elsif ( $line =~ m/(?<megs>\d+?)\s+?MB\s+?processed/i ) {
-        logit(  text    => "Check completed: Disk: $disk - $+{megs} MB processed",
-                message => "Check completed: Disk: $disk - $+{megs} MB processed",
-                level   => 3,
-        );
-      } 
-      elsif ( $line =~ m/(?<errors>\d+?)\s+?errors/i ) {
-        if ( $+{errors} > 0 ) {
-          logit(  text    => "Warning: Check on disk $disk shows $+{errors} errors",
-                  message => "Warn: Check on disk $disk shows $+{errors} errors",
+      
+      # Damaged files found so lets log them
+      if ( $filesDamaged ) {
+        # Writeout check log if need (Writes files names found damaged)
+        my $checkLogFile = $opt{logFileLocation} . $slashType . "snapraidCheck-$disk.log";
+        # Write file 
+        my $fileWritten = write_file( filename  => $checkLogFile,
+                                      contents  => \$filesDamaged,
+                                    );
+        # Logit if file did not write out
+        if ( !$fileWritten ) {
+          logit(  text    => "Warning: Unable to write check log - Please check $opt{logFileLocation} is writable", 
+                  message => 'Warn: Unable to write check log',
                   level   => 2,
                 );
         }
-      }
-      elsif ( $line =~ m/(?<unrerrors>\d+?)\s+?unrecoverable/i ) {
-        if ( $+{unrerrors} > 0 ) {
-        logit(  text    => "Critical: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
-                message => "Crit: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
-                level   => 1,
-              );
+        else {
+          logit(  text    => "Warning: Damaged files checking $disk - Please check log: $checkLogFile", 
+                  message => "Warn: Damaged files checking $disk - Please check log: $checkLogFile",
+                  level   => 2,
+                );      
         }
       }
     }
-    
-    # Writeout check log if need (Writes files names found damaged)
-    my $checkLogFile = $opt{logFileLocation} . $slashType . "snapraidCheck-$disk.log";
-    # Write file 
-    my $fileWritten = write_file( filename  => $checkLogFile,
-                                  contents  => \$filesDamaged,
-                                );
-    # Logit if file did not write out
-    if ( !$fileWritten ) {
-      logit(  text    => "Warning: Unable to write check log - Please check $opt{logFileLocation} is writable", 
-              message => 'Warn: Unable to write check log',
-              level   => 2,
-            );
-    }   
+    else {
+      # Logit
+      logit(  text    => "Check disk: $disk - Fail Percentage: $disksToProcess->{$disk}% - Checked within $opt{checkMinTimeBetweenChecks} days", 
+              message => "Check disk: $disk - No check done min time not elapsed",
+              level   => 3,
+           );
+    }
+    # Change fp to time for storage in json file
+    $disksToProcess->{$disk} = $timeNow;
   }
+  
+  # Save json and end warning if failed to save
+  if ( !save_json( $jsonCheckFile, $disksToProcess ) ) {
+    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Warn: Unable to write to json dir',
+            level   => 2,
+          );
+  }
+  
   return;
 }
 
@@ -960,41 +1065,23 @@ sub parse_conf {
   
   # Location of json conf file
   my $jsonConfFile = $opt{jsonFileLocation} . $slashType .  'confout.json'; 
- 
-  # Json object
-  my $json = JSON::PP->new;
-  $json = $json->canonical(1);
- 
-  # Load json conf from last run 
-  my $preConf = slurp_file($jsonConfFile);
- 
-  # Decode json file
-  my $preConfRef;
-  my %preConf;
-  if ( $preConf ) {
-    $preConfRef = $json->decode($preConf); 
-    %preConf = %{$preConfRef};
-  }
-   
+
+  # Load json as a data reference
+  my $preConfRef = load_json($jsonConfFile);
+     
   # Conf file changed? 
-  if ( !compare_data_structure(\%conf, \%preConf) ) {
+  if ( !compare_data_structure(\%conf, $preConfRef) ) {
     logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
             message => 'Warn: Snapraid conf file changed!',
             level   => 2,
           );
   }
-
-  # Encode current snapraid conf to json
-  my $confOut     = $json->encode(\%conf);
-
-  # Write out json for config
-  my $fileWritten = write_file( filename  => $jsonConfFile,
-                                contents  => \$confOut,
-                               );
-  if ( !$fileWritten ) {
-    logit(  text    => "Info: Unable to write to: $opt{jsonFileLocation}",
-            message => 'Info: Unable to write to json dir',
-            level   => 3,
+ 
+  # Save json and end warning if failed to save
+  if ( !save_json( $jsonConfFile, \%conf ) ) {
+    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Warn: Unable to write to json dir',
+            level   => 2,
           );
   }
   
@@ -1584,7 +1671,7 @@ sub time_stamp {
   my $fullYear = $year + 1900;
 
   # Return formatted timestamp
-  return sprintf( "%02d:%02d:%02d - %s %d %s %d", $hour, $min, $sec, $days[$wday], $mday, $months[$mon], $fullYear );
+  return sprintf( "%02d:%02d:%02d %d %s %d", $hour, $min, $sec, $mday, $months[$mon], $fullYear );
 
 }
 
@@ -1703,10 +1790,7 @@ sub save_json {
                                );
   # File written OK?
   if ( !$fileWritten ) {
-    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
-            message => 'Warn: Unable to write to json dir',
-            level   => 2,
-          );
+    # Return fail
     return 0;
   }
   else {
