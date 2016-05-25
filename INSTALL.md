@@ -86,7 +86,7 @@ sudo nano /etc/systemd/system/snapPERL.timer
 Enter
 ~~~
 [Unit]
-Description="SnapPERL a SnapRAID automation wrapper ."
+Description="SnapPERL a SnapRAID automation wrapper"
 
 [Timer]
 OnCalendar=02:00
@@ -103,7 +103,7 @@ sudo nano /etc/systemd/system/snapPERL.service
 Enter
 ~~~
 [Unit]
-Description=SnapRAID Wrapper Script for sync/scrub and much more
+Description="SnapRAID Wrapper Script for sync/scrub and much more"
 
 [Service]
 Type=simple

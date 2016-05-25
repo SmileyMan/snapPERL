@@ -12,9 +12,9 @@ Email::Send::Gmail (If using gmail)       ->  command: sppm install Email::Send:
 ##Windows: 
 
 You need Perl installed on windows. Options are:
- *ActivePerl       - http://www.activestate.com/activeperl - Version I test on
- *Strawberry Perl  - http://strawberryperl.com/
- *DWIM Perl        - http://dwimperl.com/
+* ActivePerl       - http://www.activestate.com/activeperl - Version I test on
+* Strawberry Perl  - http://strawberryperl.com/
+* DWIM Perl        - http://dwimperl.com/
 
 ~~~ Windows
 1. Download http://snapperl.stevemiles.me.uk/downloads/latest/snapPERL-latest.zip
