@@ -10,6 +10,11 @@
 #############################################################################################
 #
 # Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
+#                                     http://snapperl.stevemiles.me.uk/
+#                                     http://stevemiles.me.uk/
+#
+# Email Support                       snapperl@stevemiles.me.uk
+# (Please note: Free script so will help where I can)
 #
 #############################################################################################
 
@@ -61,15 +66,15 @@ my %argv;
 GetOptions (
   "conf|c=s"          => \$optionsFile,
   "custom-cmds|x=s"   => \$customCmdsFile,
-  "stdout|S=i"        => \$argv{logStdout},
-  "send-email|E=i"    => \$argv{emailSend},
+  "stdout|S"          => \$argv{logStdout},
+  "send-email|E"      => \$argv{emailSend},
   "message-level|m=i" => \$argv{messageLevel},
   "log-level|l=i"     => \$argv{logLevel},
-  "custom|X=i"        => \$argv{useCustomCmds},
-  "pushover|M=i"      => \$argv{pushOverSend},
-  "smart|I=i"         => \$argv{smartLog},
-  "pool|P=i"          => \$argv{pool},
-  "spindown|D=i"      => \$argv{spinDown},
+  "custom|X"          => \$argv{useCustomCmds},
+  "pushover|M"        => \$argv{pushOverSend},
+  "smart|I"           => \$argv{smartLog},
+  "pool|P"            => \$argv{pool},
+  "spindown|D"        => \$argv{spinDown},
   "help|h"            => \$argv{help},
   "version|v"         => \$argv{version},
 );
