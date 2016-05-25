@@ -30,7 +30,7 @@ use Getopt::Long qw(GetOptions);        # Get command line options
 Getopt::Long::Configure qw(gnu_getopt); # Configure to accept short -? type commandline options
 #use Data::Dumper;                       # Debug use
 
-our $VERSION = 0.3.0;
+our $VERSION = '0.3.0';
 
 ############################## Script only from here ########################################
 
@@ -57,14 +57,25 @@ my $optionsFile = $scriptPath . 'snapPERL.conf';
 my $customCmdsFile = $scriptPath . 'custom-cmds';
 
 # Get file locations from command line if given
-{
-  # Localize @ARGV so its not stripped and can be read again later 
-  local(@ARGV) = @ARGV;
-  GetOptions (
-    "conf|c=s"        => \$optionsFile,
-    "custom-cmds|x=s" => \$customCmdsFile,
-  );
-}
+my %argv;
+GetOptions (
+  "conf|c=s"          => \$optionsFile,
+  "custom-cmds|x=s"   => \$customCmdsFile,
+  "stdout|S=i"        => \$argv{logStdout},
+  "send-email|E=i"    => \$argv{emailSend},
+  "message-level|m=i" => \$argv{messageLevel},
+  "log-level|l=i"     => \$argv{logLevel},
+  "custom|X=i"        => \$argv{useCustomCmds},
+  "pushover|M=i"      => \$argv{pushOverSend},
+  "smart|I=i"         => \$argv{smartLog},
+  "pool|P=i"          => \$argv{pool},
+  "spindown|D=i"      => \$argv{spinDown},
+  "help|h"            => \$argv{help},
+  "version|v"         => \$argv{version},
+);
+
+if ( $argv{version} ) { say "snapPERL v$VERSION by Steve Miles (2016) - snapperl.stevemiles.me.uk"; exit(0); }
+if ( $argv{help} )    { show_cmdline_help(); }
 
 # Croak if no conf file to load
 if ( !-e $optionsFile ) { croak("snapPERL conf file: $optionsFile not found - Critical error"); }
@@ -679,7 +690,7 @@ sub snap_smart {
   my $smartDiskInRef = load_json($jsonSmartFile);
 
   # Data from last run
-  if ( %{$smartDiskInRef} ) {
+  if ( $smartDiskInRef ) {
     foreach my $key (keys %{$smartDiskInRef} ) {
       # Valid key in new hash to compare
       if ( exists $smartDisk{$key} ) {
@@ -1247,12 +1258,13 @@ sub get_opt_hash {
   $opt{jsonFileLocation} = $scriptPath . 'json';
   
   # Set options to command line overrides - If not sent on command line then they use values from conf
-  GetOptions (
-    "sndout|s=i"        => \$opt{logStdout},
-    "send-email|e=i"    => \$opt{emailSend},
-    "message-level|m=i" => \$opt{messageLevel},
-    "log-level|L=i"     => \$opt{logLevel},
-  );
+  foreach my $option (keys %argv) {
+    # Value taken from command line
+    if ( defined $argv{$option} ) {
+      # Replace value read from conf file in %opt hash
+      $opt{$option} = $argv{$option};
+    }
+  }
   
   # Hold value of lowest LogLevel reached
   $opt{minLogLevel} = 5;
@@ -1271,7 +1283,7 @@ sub script_comp {
   if ( $opt{emailSend} ) { email_send(); }
 
   # Write log to location in $opt{logFile}
-  if ( $opt{logFile} ) { 
+  if ( $opt{logFile} and $scriptLog ) { 
     my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
     my $fileWritten = write_file( filename  => $logOutFile,
                                   contents  => \$scriptLog,
@@ -1987,6 +1999,36 @@ sub debug_log {
   return;
 }
 
+##
+# sub show_cmdline_help
+# Called to display help when called from command line
+# usage show_cmdline_help();
+# return exit(0)
+sub show_cmdline_help {
+
+  # Build help
+  my $help = q(
+  snapPERL.pl [ -c, --conf CONFIG       { Full path to conf file }        ]
+              [ -x, --custom-cmds FILE  { Full path to custom-cmds file } ]
+              [ -S, --stdout 1|0        { Toggle log to stdout }          ]
+              [ -E, --send-email 1|0    { Toggle email send }             ]
+              [ -m, --message-level 1-3 { Set message level }             ]
+              [ -l, --log-level 1-5     { set log level }                 ]
+              [ -X, --custom 1|0        { Toggle custom cmds }            ]
+              [ -M, --pushover 1|0      { Toggle Pushover send }          ]
+              [ -I, --smart 1|0         { Toggle smart logging }          ]
+              [ -P, --pool 1|0          { Toggle snapraid pool }          ]
+              [ -D, --spindown 1|0      { Toggle spindown disks }         ]
+              [ -h, --Help              { This Help }                     ]
+              [ -v, --version           { Display Version }               ]
+  );
+  
+  # Display help
+  say $help;
+  
+  # Exit script
+  exit (0);
+}
 
 #-------- Subroutines End --------#
 
@@ -1994,4 +2036,3 @@ sub debug_log {
 1;
 
 __END__
-

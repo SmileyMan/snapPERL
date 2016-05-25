@@ -6,8 +6,7 @@
 
            Keep x amount of logs (Plan v0.5)
            Improve custom commands especialy regarding output and error checks (Plan v0.5)
-           Limited command line options that overide conf settings (Plan v0.5)
-
+ 
            Add NMA support (Plan v0.6)
            Add Pushbullet support (Plan v0.6)
            Add email TLS support - Change to Email::Sender::SMTPS (Plan v0.6)
@@ -45,7 +44,8 @@
            Once a drive is past warning level for Fail Percentage start weekly snapraid check on it audit-only (Done v0.3)
            Add catches for snapraid DANGER! messages (Done v0.3)
            Option to enforce minimum days between syncs (Done v0.3)
-           
+           Limited command line options that overide conf settings (Done v0.3)
+                                
 #Removed
            Allow smart data per disk (Plan v0.4) - No snapraid support
            Add option to delete duplicates and re-sync (Adding symbolic refs if wanted) (Plan v0.4) - Breaks underlying rule to not touch data

@@ -11,6 +11,7 @@
             Critical: Script aborts for none fatal warnings sent to stderr. Removed.
             Catches added for snapraid DANGER! warning messages (Most people will never see one)
             Added option to enforce minimum days between syncs (Now option in snapPERL.conf)
+            Added command line options that override conf settings if needed - snapPERL.pl -h
 
 11/05/2016 v0.2.2
             Added windows support. No help files yet but tested and working. Must have ActivePerl / Strawberry Perl or DWIM Perl installed
