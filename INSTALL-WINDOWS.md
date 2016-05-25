@@ -9,6 +9,10 @@ Email::Send::Gmail (If using gmail)       ->  command: ppm install Email::Send::
 * commands listed are for ActivePerl in elevated command prompt
 ~~~ 
 
+##### This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
+
+##### Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
+
 ##Windows: 
 
 You need Perl installed on windows. Options are:
