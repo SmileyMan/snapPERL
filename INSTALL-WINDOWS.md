@@ -12,9 +12,9 @@ Email::Send::Gmail (If using gmail)       ->  command: sppm install Email::Send:
 ##Windows: 
 
 You need Perl installed on windows. Options are:
-1. ActivePerl       - http://www.activestate.com/activeperl - Version I test on
-2. Strawberry Perl  - http://strawberryperl.com/
-3. DWIM Perl        - http://dwimperl.com/
+ *ActivePerl       - http://www.activestate.com/activeperl - Version I test on
+ *Strawberry Perl  - http://strawberryperl.com/
+ *DWIM Perl        - http://dwimperl.com/
 
 ~~~ Windows
 1. Download http://snapperl.stevemiles.me.uk/downloads/latest/snapPERL-latest.zip
@@ -35,26 +35,37 @@ Run Task Scheduler : Start Menu -> All Programs -> Accessories -> System tools -
                      Start menu -> Run -> C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools\Task Scheduler.lnk
 
 Click 'Create Basic Task'
+
 Enter Name: snapPERL
 Enter Description: Snapraid automation wrapper
 Click 'Next'
+
 Set to Daily 
 Click 'Next'
+
 Set date and Time (Tomorrow @ 02:00:00) - Should have 1 in the Recur box
 Click 'Next'
+
 Select 'Start a Program'
 Click 'Next'
+
 Enter loction of script -Example C:\snapraid\snapPERL\snapPERL.pl
 Add any command line arguments (Normaly none)
 Click 'Next'
+
 Click on 'Open the Properties dialog for this task when I click Finish'
+
 Click 'Finish'
+
 Click 'Change User or Group'
 Enter 'Local' in box and click 'Check Names'
 Select 'LOCAL SERVICE'
+
 Click on 'Run with highest privileges (Snapraid needs to be elevated)
 Under 'Settings' tab change max run time to '1 day'
+
 Click 'OK'
+
 Done!
 ~~~
 
