@@ -62,6 +62,7 @@ Enter 'Local' in box and click 'Check Names'
 Select 'LOCAL SERVICE'
 
 Click on 'Run with highest privileges (Snapraid needs to be elevated)
+
 Under 'Settings' tab change max run time to '1 day'
 
 Click 'OK'

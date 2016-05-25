@@ -52,7 +52,7 @@ Manual:
 2. git clone https://github.com/SmileyMan/snapPERL.git
 3. Follow from number 4 above 
 ~~~
-Update git
+#####Update git
 
 In snapPERL location on drive type
 ~~~
@@ -60,7 +60,7 @@ git pull
 ~~~
 This will not clobber your conf file but be sure to check for any new options
 
-Bleeding edge Dev version
+#####Bleeding edge Dev version
 ~~~
 git pull
 pit merge origin/Dev
