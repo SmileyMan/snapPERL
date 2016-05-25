@@ -21,12 +21,14 @@ use strict;
 use warnings;
 
 # Modules
-use Carp qw(croak);   # Croak to abort script
-use Module::Load;     # Perl core module for on demand loading of optional modules
-use File::Spec;       # Used to read absolute path
-use LWP::UserAgent;   # Send Post/Get (For messaging support)
-use JSON::PP;         # Encode data to JSON for storage
-#use Data::Dumper;     # Debug use
+use Carp qw(croak);                     # Croak to abort script
+use Module::Load;                       # Perl core module for on demand loading of optional modules
+use File::Spec;                         # Used to read absolute path
+use LWP::UserAgent;                     # Send Post/Get (For messaging support)
+use JSON::PP;                           # Encode data to JSON for storage
+use Getopt::Long qw(GetOptions);        # Get command line options
+Getopt::Long::Configure qw(gnu_getopt); # Configure to accept short -? type commandline options
+#use Data::Dumper;                       # Debug use
 
 our $VERSION = 0.3.0;
 
@@ -53,6 +55,15 @@ my $optionsFile = $scriptPath . 'snapPERL.conf';
 
 # Define custom commands file
 my $customCmdsFile = $scriptPath . 'custom-cmds';
+
+# Get file locations from command line if given
+GetOptions (
+    "conf|c=s"        => \$optionsFile,
+    "custom-cmds|x=s" => \$customCmdsFile,
+);
+
+# Croak if no conf file to load
+if ( !-e $optionsFile ) { croak("snapPERL conf file: $optionsFile not found - Critical error"); }
 
 # Define package variables (Lexical to package)
 my ( $scriptLog, $scriptMessage );
@@ -468,6 +479,8 @@ sub snap_scrub {
   my %cmdArgs = @_;
   my $dataProcessed;
   
+  if ( $cmdArgs{plan} eq 'new' ) { $cmdArgs{planNew} = 1; }
+  
   if ( $cmdArgs{plan} ) { $cmdArgs{plan} = "-p $cmdArgs{plan}"; }
   if ( $cmdArgs{age} )  { $cmdArgs{age}  = "-o $cmdArgs{age}";  }
 
@@ -487,6 +500,24 @@ sub snap_scrub {
 
   # Was it a success?
   if ( $output =~ m/Everything\s+?OK/i ) {
+    
+    # Output scrub time to json
+    if ( $opt{scrubEnforceMinDays} and not $cmdArgs{planNew} ) {
+  
+      my $timeNow = time();
+      my $scrubTime = { lastScrubTime => $timeNow };
+    
+      # Location of json file
+      my $jsonFile = $opt{jsonFileLocation} . $slashType .  'scrublast.json'; 
+     
+      # Save json and end warning if failed to save
+      if ( !save_json( $jsonFile, $scrubTime ) ) {
+        logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+                message => 'Warn: Unable to write to json dir',
+                level   => 2,
+              );
+      }
+    }  
     # Log details from scrub.
     logit(  text    => "Snapraid scrub completed: $dataProcessed MB processed",
             message => "Snapraid scrub comp: $dataProcessed MB",
@@ -497,7 +528,7 @@ sub snap_scrub {
     logit(  text    => 'Snapraid scrub completed: Nothing to do',
             message => 'Snapraid scrub comp: Nothing to do',
             level   => 3,
-          );    
+          );   
   }
   else {
     # Stop script.
@@ -506,24 +537,7 @@ sub snap_scrub {
             level   => 2,
             abort   => 1,
           ); 
-  }
-  
-  if ( $opt{scrubEnforceMinDays} ) {
-
-    my $timeNow = time();
-    my $scrubTime = { lastScrubTime => $timeNow };
-  
-    # Location of json file
-    my $jsonFile = $opt{jsonFileLocation} . $slashType .  'scrublast.json'; 
-   
-    # Save json and end warning if failed to save
-    if ( !save_json( $jsonFile, $scrubTime ) ) {
-      logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
-              message => 'Warn: Unable to write to json dir',
-              level   => 2,
-            );
-    }
-  }  
+  } 
   return;
 }
 
@@ -1228,6 +1242,14 @@ sub get_opt_hash {
   # Define location for script json files (Files that hold information about previous runs)
   $opt{jsonFileLocation} = $scriptPath . 'json';
   
+  # Set options to command line overrides - If not sent on command line then they use values from conf
+  GetOptions (
+    "sndout|s=i"        => \$opt{logStdout},
+    "send-email|e=i"    => \$opt{emailSend},
+    "message-level|m=i" => \$opt{messageLevel}
+    "log-level|L=i"     => \$opt{logLevel}
+  );
+  
   # Hold value of lowest LogLevel reached
   $opt{minLogLevel} = 5;
   
@@ -1543,29 +1565,38 @@ sub send_message_po {
 # return void
 sub load_custom_cmds {
 
-  my $customCmdsIn;
-
-  # Slurp the custom commands file :P
-  $customCmdsIn = slurp_file($customCmdsFile);
-
-  foreach my $line ( split(/\n/, $customCmdsIn) ) {
-
-    # Remove any leading whitespace
-    $line =~ s/^\s+//g;
-
-    #Ignore comments and empty lines
-    if ( $line !~ m/^#/ && $line =~ m/=/ ) {
-
-      #Split on '='
-      my ( $type, $cmd ) = split(/=/, $line);
-
-      # Ignore lines without pre or post commands
-      if ( $type =~ m/pre|post/ ) {
-
-        # Add to Hash/Array
-        $customCmds{$type}->[ $#{ $customCmds{$type} } + 1 ] = $cmd;
+  # File exists?
+  if ( -e $customCmdsFile ) {
+    my $customCmdsIn;
+  
+    # Slurp the custom commands file :P
+    $customCmdsIn = slurp_file($customCmdsFile);
+  
+    foreach my $line ( split(/\n/, $customCmdsIn) ) {
+  
+      # Remove any leading whitespace
+      $line =~ s/^\s+//g;
+  
+      #Ignore comments and empty lines
+      if ( $line !~ m/^#/ && $line =~ m/=/ ) {
+  
+        #Split on '='
+        my ( $type, $cmd ) = split(/=/, $line);
+  
+        # Ignore lines without pre or post commands
+        if ( $type =~ m/pre|post/ ) {
+  
+          # Add to Hash/Array
+          $customCmds{$type}->[ $#{ $customCmds{$type} } + 1 ] = $cmd;
+        }
       }
     }
+  }
+  else {
+    logit(  text    => 'Warning: Custom Commands file: $customCmdsFile not found',
+            message => 'Warn: custom-cmds file not found',
+            level   => 2,
+          );
   }
   return 1;
 }
