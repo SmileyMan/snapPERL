@@ -1,6 +1,8 @@
 #!/bin/bash
 
-#v0.2 install script! - Linux only
+#########################################
+# Basic v0.3 install script! - Linux only
+# 
 
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root" 1>&2

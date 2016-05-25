@@ -26,7 +26,6 @@ use strict;
 use warnings;
 
 # Modules
-use Carp qw(croak);                     # Croak to abort script
 use Module::Load;                       # Perl core module for on demand loading of optional modules
 use File::Spec;                         # Used to read absolute path
 use LWP::UserAgent;                     # Send Post/Get (For messaging support)
@@ -66,15 +65,15 @@ my %argv;
 GetOptions (
   "conf|c=s"          => \$optionsFile,
   "custom-cmds|x=s"   => \$customCmdsFile,
-  "stdout|S"          => \$argv{logStdout},
-  "send-email|E"      => \$argv{emailSend},
+  "stdout|S=s"        => \$argv{logStdout},
+  "send-email|E=s"    => \$argv{emailSend},
   "message-level|m=i" => \$argv{messageLevel},
   "log-level|l=i"     => \$argv{logLevel},
-  "custom|X"          => \$argv{useCustomCmds},
-  "pushover|M"        => \$argv{pushOverSend},
-  "smart|I"           => \$argv{smartLog},
-  "pool|P"            => \$argv{pool},
-  "spindown|D"        => \$argv{spinDown},
+  "custom|X=s"        => \$argv{useCustomCmds},
+  "pushover|M=s"      => \$argv{pushOverSend},
+  "smart|I=s"         => \$argv{smartLog},
+  "pool|P=s"          => \$argv{pool},
+  "spindown|D=s"      => \$argv{spinDown},
   "help|h"            => \$argv{help},
   "version|v"         => \$argv{version},
 );
@@ -83,7 +82,7 @@ if ( $argv{version} ) { say "snapPERL v$VERSION by Steve Miles (2016) - snapperl
 if ( $argv{help} )    { show_cmdline_help(); }
 
 # Croak if no conf file to load
-if ( !-e $optionsFile ) { croak("snapPERL conf file: $optionsFile not found - Critical error"); }
+if ( !-e $optionsFile ) { say "snapPERL conf file: $optionsFile not found - Critical error"; exit(1); }
 
 # Define package variables (Lexical to package)
 my ( $scriptLog, $scriptMessage );
@@ -936,10 +935,18 @@ sub snap_pool {
 
     # Get number of links created
     my ( $links ) = $output =~ m/(\d+?)\s+?links/i;
-    logit(  text    => "Pool command run and $links links created in $conf{pool}", 
-            message => "Pool run and $links links created",
-            level   => 3,
-          );
+    if ( $links ) {
+      logit(  text    => "Pool command run and $links links created in $conf{pool}", 
+              message => "Pool run and $links links created",
+              level   => 3,
+            );
+    }
+    else {
+      logit(  text    => "Warning: Pool command failed for location $conf{pool}", 
+              message => "Warn: Pool command failed",
+              level   => 2,
+            );    
+    }
   }
   # Not a valid directory?
   elsif ( not -d $conf{pool} ) {
@@ -1209,6 +1216,10 @@ sub check_conf {
 # return void
 sub get_opt_hash {
 
+  # Hold value of lowest LogLevel reached
+  $opt{minLogLevel} = 5;
+  
+  # Options hash
   my $options;
 
   # Slurp the options file :P
@@ -1266,14 +1277,15 @@ sub get_opt_hash {
   foreach my $option (keys %argv) {
     # Value taken from command line
     if ( defined $argv{$option} ) {
+      # Logit @ debug level
+      logit(  text    => "Debug: Commandline - $option value: $opt{$option} changed to: $argv{$option}",
+              message => '',
+              level   => 5,
+            );
       # Replace value read from conf file in %opt hash
       $opt{$option} = $argv{$option};
     }
   }
-  
-  # Hold value of lowest LogLevel reached
-  $opt{minLogLevel} = 5;
-  
   return;
 }
 
@@ -1292,8 +1304,7 @@ sub script_comp {
     my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
     my $fileWritten = write_file( filename  => $logOutFile,
                                   contents  => \$scriptLog,
-                                  UTF8      => 0,
-                                 );
+                                );
     
     if ( !$fileWritten ) {
       logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable",
@@ -1614,7 +1625,7 @@ sub load_custom_cmds {
     }
   }
   else {
-    logit(  text    => 'Warning: Custom Commands file: $customCmdsFile not found',
+    logit(  text    => "Warning: Custom Commands file: $customCmdsFile not found",
             message => 'Warn: custom-cmds file not found',
             level   => 2,
           );
@@ -1779,13 +1790,19 @@ sub logit {
   }
   
   if ( $logIn{abort} ) {
-    
+ 
+    # Log before killing script (Recursive call) - Already aborting so abort tag not needed and would create an infinite loop
+    logit(  text    => 'Fatal issue encountered. Please see logs',
+            message => 'Fatal issue encountered. Please see logs',
+            level   => 1,
+            abort   => 0, # Never change to 1 (Infinite Loop)
+          ); 
+   
     # Cleanup
     script_comp();
 
-    # Kill script
-    croak "Fatal issue encountered. Please see logs";
-    
+    # Kill script - Return 1 indicating fatal exit
+    exit(1);
   }
   
   return;
@@ -2013,19 +2030,19 @@ sub show_cmdline_help {
 
   # Build help
   my $help = q(
-  snapPERL.pl [ -c, --conf CONFIG       { Full path to conf file }        ]
+  snapPERL.pl [ -c, --conf CONFIG       { Full path to conf file        } ]
               [ -x, --custom-cmds FILE  { Full path to custom-cmds file } ]
-              [ -S, --stdout 1|0        { Toggle log to stdout }          ]
-              [ -E, --send-email 1|0    { Toggle email send }             ]
-              [ -m, --message-level 1-3 { Set message level }             ]
-              [ -l, --log-level 1-5     { set log level }                 ]
-              [ -X, --custom 1|0        { Toggle custom cmds }            ]
-              [ -M, --pushover 1|0      { Toggle Pushover send }          ]
-              [ -I, --smart 1|0         { Toggle smart logging }          ]
-              [ -P, --pool 1|0          { Toggle snapraid pool }          ]
-              [ -D, --spindown 1|0      { Toggle spindown disks }         ]
-              [ -h, --Help              { This Help }                     ]
-              [ -v, --version           { Display Version }               ]
+              [ -S, --stdout 1|0        { Toggle log to stdout          } ]
+              [ -E, --send-email 1|0    { Toggle email send             } ]
+              [ -m, --message-level 1-3 { Set message level             } ]
+              [ -l, --log-level 1-5     { set log level                 } ]
+              [ -X, --custom 1|0        { Toggle custom cmds            } ]
+              [ -M, --pushover 1|0      { Toggle Pushover send          } ]
+              [ -I, --smart 1|0         { Toggle smart logging          } ]
+              [ -P, --pool 1|0          { Toggle snapraid pool          } ]
+              [ -D, --spindown 1|0      { Toggle spindown disks         } ]
+              [ -h, --Help              { This Help                     } ]
+              [ -v, --version           { Display Version               } ]
   );
   
   # Display help
