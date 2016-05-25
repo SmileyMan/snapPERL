@@ -9,12 +9,11 @@ Email::Send::Gmail (If using gmail)       ->  command: sudo cpan install Email::
 ~~~ 
 ## Linux:
 
-#### This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
+##### This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
 
-#### Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
+##### Feel free to test. All data manipulation is done by snapraid http://www.snapraid.it/
 
-##### Install
-
+#### Install
 
 Install Script:
 
