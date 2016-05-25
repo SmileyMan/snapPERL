@@ -5,7 +5,7 @@
 Email::Send (If using email)              ->  command: ppm install Email::Send            - (Normaly installed by default)
 Email::Send::SMTP (If using SMTP)         ->  command: ppm install Email::Send::SMTP      - (Normaly installed by default)
 Email::Send::Sendmail (If using Sendmail) ->  command: ppm install Email::Send::Sendmail  - (Normaly installed by default)
-Email::Send::Gmail (If using gmail)       ->  command: sppm install Email::Send::Gmail
+Email::Send::Gmail (If using gmail)       ->  command: ppm install Email::Send::Gmail
 * commands listed are for ActivePerl in elevated command prompt
 ~~~ 
 
