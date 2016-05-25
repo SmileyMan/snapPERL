@@ -57,10 +57,14 @@ my $optionsFile = $scriptPath . 'snapPERL.conf';
 my $customCmdsFile = $scriptPath . 'custom-cmds';
 
 # Get file locations from command line if given
-GetOptions (
+{
+  # Localize @ARGV so its not stripped and can be read again later 
+  local(@ARGV) = @ARGV;
+  GetOptions (
     "conf|c=s"        => \$optionsFile,
     "custom-cmds|x=s" => \$customCmdsFile,
-);
+  );
+}
 
 # Croak if no conf file to load
 if ( !-e $optionsFile ) { croak("snapPERL conf file: $optionsFile not found - Critical error"); }
