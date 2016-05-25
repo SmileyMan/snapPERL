@@ -1246,8 +1246,8 @@ sub get_opt_hash {
   GetOptions (
     "sndout|s=i"        => \$opt{logStdout},
     "send-email|e=i"    => \$opt{emailSend},
-    "message-level|m=i" => \$opt{messageLevel}
-    "log-level|L=i"     => \$opt{logLevel}
+    "message-level|m=i" => \$opt{messageLevel},
+    "log-level|L=i"     => \$opt{logLevel},
   );
   
   # Hold value of lowest LogLevel reached
