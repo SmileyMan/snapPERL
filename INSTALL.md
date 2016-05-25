@@ -7,23 +7,6 @@ Email::Send::SMTP (If using SMTP)         ->  command: sudo cpan install Email::
 Email::Send::Sendmail (If using Sendmail) ->  command: sudo cpan install Email::Send::Sendmail  - (Normaly installed by default)
 Email::Send::Gmail (If using gmail)       ->  command: sudo cpan install Email::Send::Gmail
 ~~~ 
-
-##Windows: 
-
-You need Perl installed on windows. Options are:
-1. ActivePerl       - http://www.activestate.com/activeperl
-2. Strawberry Perl  - http://strawberryperl.com/
-3. DWIM Perl        - http://dwimperl.com/
-
-(Basic first version of instuctions)
-~~~ Windows
-1. Download and extract zip. 
-2. Edit and rename snapPERL.conf.example to snapPERL.conf
-3. Rename custom-cmds.example custom-cmds
-4. Use PPM with ActivePerl to install needed modules (Or other Perl Package Manager installed)
-5. From elevated command prompt run snapPERL.pl
-~~~
-
 ## Linux:
 
 #### This script does not write or manipulate any Array Data. It is a wrapper for snapraid http://www.snapraid.it/
@@ -36,9 +19,9 @@ You need Perl installed on windows. Options are:
 Install Script:
 
 ~~~BASH
-1. wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.2.tar.gz
-2. tar -zxvf snapPERL-v0.2.2.tar.gz
-3. mv snapPERL-v0.2.2 snapPERL
+1. wget http://snapperl.stevemiles.me.uk/downloads/latest/snapPERL-latest.zip
+2. tar -zxvf snapPERL-latest.zip
+3. mv snapPERL-latest snapPERL
 4. cd snapPERL
 5. ./install.sh
 6. Change settings in snapPERL.conf to suit
@@ -49,9 +32,9 @@ Install Script:
 Manual:
 
 ~~~BASH
-1.  wget https://github.com/SmileyMan/snapPERL/archive/snapPERL-v0.2.2.tar.gz
-2.  tar -zxvf snapPERL-v0.2.2.tar.gz
-3.  mv snapPERL-v0.2.2 snapPERL
+1.  wget http://snapperl.stevemiles.me.uk/downloads/latest/snapPERL-latest.zip
+2.  tar -zxvf snapPERL-latest.zip
+3.  mv snapPERL-latest snapPERL
 4.  cd snapPERL
 5.  cp snapPERL.conf.example snapPERL.conf
 6.  cp custom-cmds.example custom-cmds
@@ -62,12 +45,9 @@ Manual:
 11. ./snapPERL.pl to run
 ~~~
 
-##### You can of course run as a root crontab. Be happy it does what you need first. 
+### Using git (This will pull latest master commit.. Not a release)
 
-
-Using git (This will pull latest master commit.. Not a release)
-
-~~~BASH
+~~~
 1. sudo apt-get install git
 2. git clone https://github.com/SmileyMan/snapPERL.git
 3. Follow from number 4 above 
@@ -75,8 +55,63 @@ Using git (This will pull latest master commit.. Not a release)
 Update git
 
 In snapPERL location on drive type
-~~~BASH
+~~~
 git pull
 ~~~
 This will not clobber your conf file but be sure to check for any new options
 
+Bleeding edge Dev version
+~~~
+git pull
+pit merge origin/Dev
+~~~
+Test first on a new clone - I do break it now and again (I write on machines with no testing enviroment and commit to check when I get home)
+
+##### You can of course run as a root crontab. Be happy it does what you need first. 
+~~~
+sudo crontab -e
+~~~
+Add
+~~~
+0 2 * * * ~/scripts/snapPERL/snapPERL.pl > /dev/null 2>&1
+~~~
+This will run every moring at 2am (Location can be anywhere this is just mine)
+
+##### SystemD instructions - Instead of Cron
+
+Timer file
+~~~
+sudo nano /etc/systemd/system/snapPERL.timer
+~~~
+Enter
+~~~
+[Unit]
+Description="SnapPERL a SnapRAID automation wrapper ."
+
+[Timer]
+OnCalendar=02:00
+Unit=snapPERL.service
+
+[Install]
+WantedBy=multi-user.target
+~~~
+
+Service file
+~~~
+sudo nano /etc/systemd/system/snapPERL.service
+~~~
+Enter
+~~~
+[Unit]
+Description=SnapRAID Wrapper Script for sync/scrub and much more
+
+[Service]
+Type=simple
+ExecStart=
+ExecStart=/root/scripts/snapPERL/snapPERL.pl
+~~~
+
+To enable the timer
+~~~
+sudo systemctl enable snapPERL.timer
+~~~

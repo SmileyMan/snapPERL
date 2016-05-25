@@ -103,7 +103,7 @@ emailToAddress=youremail@email.com                            # Email address to
 ## Use external SMTP (Optional)
 #
 # Use internal ot external SMTP server. Supports normal port:25 and SSL port:465
-# If authentication is needed -- MAKE SURE THE FILE CAN NOT BE READ BY PEOPLE YOU DONT WHAT SEEING THIS - Linux chmod 700 snapPERL.conf
+# If authentication is needed -- MAKE SURE THE FILE CAN NOT BE READ BY PEOPLE YOU DONT WHAT SEEING THIS - Linux chmod 600 snapPERL.conf
 #
 emailUseSmtp=0                                                # Use none sendmail or external smtp if not using gmail 
 emailSmtpFromAddress=you@yourisp.com                          # From address for SMTP
@@ -118,7 +118,7 @@ emailSmtpPass=                                                # Smtp password if
 #
 # Send mail using Gmails SMTP servers. Recommended setting for those with Gmail
 # Recommend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
-# If not using app passwords and 2 factor auth -- MAKE SURE THE FILE CAN NOT BE READ BY OTHERS - Linux chmod 700 snapPERL.conf
+# If not using app passwords and 2 factor auth -- MAKE SURE THE FILE CAN NOT BE READ BY OTHERS - Linux chmod 600 snapPERL.conf
 #
 emailUseGmail=0                                               # Use Gmail to send mail
 emailGmailToAddress=youremail@gmail.com                       # Email address to send logs to from gmail
