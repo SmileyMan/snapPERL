@@ -30,6 +30,7 @@ You need Perl installed on windows. Options are:
 7. Use PPM with ActivePerl to install needed modules (Or other Perl Package Manager installed)
 8. From elevated command prompt run snapPERL.pl
 ~~~
+_(Always run first time on command line - Script will check your snapPERL conf file is valid)_
 
 #### Automation
 

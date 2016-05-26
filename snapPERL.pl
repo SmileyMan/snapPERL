@@ -26,13 +26,12 @@ use strict;
 use warnings;
 
 # Modules
-use Module::Load;                       # Perl core module for on demand loading of optional modules
-use File::Spec;                         # Used to read absolute path
-use LWP::UserAgent;                     # Send Post/Get (For messaging support)
-use JSON::PP;                           # Encode data to JSON for storage
-use Getopt::Long qw(GetOptions);        # Get command line options
-Getopt::Long::Configure qw(gnu_getopt); # Configure to accept short -? type commandline options
-#use Data::Dumper;                       # Debug use
+use Module::Load;        # Perl core module for on demand loading of optional modules
+use File::Spec;          # Used to read absolute path
+use LWP::UserAgent;      # Send Post/Get (For messaging support)
+use JSON::PP;            # Encode data to JSON for storage
+use Getopt::Long;        # Get command line options
+#use Data::Dumper;       # Debug use
 
 our $VERSION = '0.3.0';
 
@@ -62,24 +61,31 @@ my $customCmdsFile = $scriptPath . 'custom-cmds';
 
 # Get file locations from command line if given
 my %argv;
-GetOptions (
+#Getops object
+my $cmdLineOpts = Getopt::Long::Parser->new;
+#Configure to accept short -? type commandline options
+$cmdLineOpts->configure( qw(gnu_getopt) );
+#get Options
+$cmdLineOpts->getoptions (
   "conf|c=s"          => \$optionsFile,
   "custom-cmds|x=s"   => \$customCmdsFile,
-  "stdout|S=s"        => \$argv{logStdout},
-  "send-email|E=s"    => \$argv{emailSend},
   "message-level|m=i" => \$argv{messageLevel},
   "log-level|l=i"     => \$argv{logLevel},
-  "custom|X=s"        => \$argv{useCustomCmds},
-  "pushover|M=s"      => \$argv{pushOverSend},
-  "smart|I=s"         => \$argv{smartLog},
-  "pool|P=s"          => \$argv{pool},
-  "spindown|D=s"      => \$argv{spinDown},
+  "stdout!"           => \$argv{logStdout},
+  "check!"            => \$argv{checkSuspectDisks},
+  "scrub!"            => \$argv{scrubEnable},
+  "email!"            => \$argv{emailSend},
+  "custom!"           => \$argv{useCustomCmds},
+  "pushover!"         => \$argv{pushOverSend},
+  "smart!"            => \$argv{smartLog},
+  "pool!"             => \$argv{pool},
+  "spindown!"         => \$argv{spinDown},
   "help|h"            => \$argv{help},
   "version|v"         => \$argv{version},
 );
 
-if ( $argv{version} ) { say "snapPERL v$VERSION by Steve Miles (2016) - snapperl.stevemiles.me.uk"; exit(0); }
-if ( $argv{help} )    { show_cmdline_help(); }
+# Display Help or Version and exit;
+if ( $argv{version} or $argv{help} ) { show_cmdline_help(); }
 
 # Croak if no conf file to load
 if ( !-e $optionsFile ) { say "snapPERL conf file: $optionsFile not found - Critical error"; exit(1); }
@@ -165,7 +171,7 @@ if ( $opt{scrubEnforceMinDays} ) {
 }
 
 # Stop scrub if scrubEnforceMinDays in effect and min days not passed
-if ( !$opt{scrubMinDaysEnforced} ) {
+if ( not $opt{scrubMinDaysEnforced} and $opt{scrubEnable} ) {
   
   # Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will always be 0.
   # So second check on oldest scrubbed block is made and scrub called if needed.
@@ -193,6 +199,13 @@ if ( !$opt{scrubMinDaysEnforced} ) {
             level   => 3,
           );
   }
+}
+elsif ( not $opt{scrubEnable} ) {
+  # Log that all scrub activity is disabled
+  logit(  text    => "No Scrub: All scrub activity disabled in configuration",
+          message => 'No Scrub. All scrub activity disabled',
+          level   => 3,
+        );
 }
 else {
   # Log that scrubEnforceMinDays not passed
@@ -466,7 +479,7 @@ sub snap_sync {
   }
 
   # New in snapraid. Verify new data from sync.
-  if ( $opt{useScrubNew} ) {
+  if ( $opt{useScrubNew} and $opt{scrubEnable} ) {
 
     # Check its a compatible version of snapraid.
     if ( $opt{snapVersion} >= 9.0 ) {
@@ -484,6 +497,13 @@ sub snap_sync {
             );
     }
   }
+  elsif ( not $opt{scrubEnable} ) {
+    # Log that all scrub activity is disabled
+    logit(  text    => "No Scrub: All scrub activity disabled in configuration",
+            message => 'No Scrub. All scrub activity disabled',
+            level   => 3,
+          );
+    }
   return;
 }
 
@@ -1258,6 +1278,19 @@ sub get_opt_hash {
     }
   }
   
+  # Call to validate loaded conf file
+  my $valid = validate_conf();
+  
+  # Invalid conf file?
+  if ( not $valid ) {
+    # Don't use logit(); Missing values in conf file. Abort
+    say 'Abort: Loaded conf file not valid - Please check your file against snapPERL.conf.example';
+    say 'This can happen when upgrading to a new versions with changed or added options';
+    say 'See list of missing options given by script';
+    # Exit
+    exit(1);
+  }
+  
   # Get hostname
   $opt{hostname} = qx{hostname};
   # Remove vertical whitespace from hostname (Email issue)
@@ -1277,11 +1310,6 @@ sub get_opt_hash {
   foreach my $option (keys %argv) {
     # Value taken from command line
     if ( defined $argv{$option} ) {
-      # Logit @ debug level
-      logit(  text    => "Debug: Commandline - $option value: $opt{$option} changed to: $argv{$option}",
-              message => '',
-              level   => 5,
-            );
       # Replace value read from conf file in %opt hash
       $opt{$option} = $argv{$option};
     }
@@ -1794,7 +1822,7 @@ sub logit {
     # Log before killing script (Recursive call) - Already aborting so abort tag not needed and would create an infinite loop
     logit(  text    => 'Fatal issue encountered. Please see logs',
             message => 'Fatal issue encountered. Please see logs',
-            level   => 1,
+            level   => 3,
             abort   => 0, # Never change to 1 (Infinite Loop)
           ); 
    
@@ -2022,33 +2050,83 @@ sub debug_log {
 }
 
 ##
+# Sub validate_conf
+# Called to validate conf file and check it contains all required options - Carps to sndout
+# Will add and change values here as I add and change in options snapPERL.conf.example
+# usage validate_conf();
+# return 1 if valid and 0 if not
+sub validate_conf {
+
+  # Conf is valid unless found to be otherwise
+  my $isValid = 1;
+  
+  # Anonymous hash containing values that should exisit in conf file
+  my $validate = { 
+    syncOptions       => [ qw( deletedFiles changedFiles ) ],
+    scrubOptions      => [ qw( scrubEnable scrubNewest scrubOldest scrubAge scrubPercentage useScrubNew scrubEnforceMinDays ) ],
+    smartOptions      => [ qw( smartLog smartWarn smartDiskWarn smartMaxDriveTemp smartDiskErrorsWarn) ],
+    checkOptions      => [ qw( checkSuspectDisks checkAuditOnly checkOnlyAfterIncrease checkDiskFailPercentage checkMinTimeBetweenChecks checkAutoFix) ],
+    snapOptions       => [ qw( snapRaidBin snapRaidConf preHashOnSync resetTimeStamps spinDown pool) ],
+    otherOptions      => [ qw( logFile messageLevel logStdout useCustomCmds noVersionWarnings ) ],
+    emailOptions      => [ qw( emailSend emailUseSendmail emailFromAddress emailToAddress ) ],
+    smtpOptions       => [ qw( emailUseSmtp emailSmtpFromAddress emailSmtpToAddress emailSmtpAddress emailSmtpPort emailSmtpSSL emailSmtpUser emailSmtpPass ) ],
+    gmailOptions      => [ qw( emailUseGmail emailGmailToAddress emailGmailUser emailGmailPass ) ],
+    pushoverOptions   => [ qw( pushOverSend pushOverKey pushOverToken pushOverUrl pushDefaultPriority pushWarningPriority pushCriticalPriority pushSound pushDevice ) ],
+    #nmaOptions        => [ qw( nmaSend ) ],
+    #pushbulletOptions => [ qw( pushBulletSend ) ],
+  }; 
+  
+  # Cycle though $validate and confirm all options listed loaded from conf file (Check conf updated with new options)
+  foreach my $optionGroup ( keys %{$validate} ) {
+    foreach my $option ( @{$validate->{$optionGroup}} ) {
+      # Check for missing option
+      if ( not exists $opt{$option} ) {
+        # Carp to stdout and set flag
+        say "snapPERL conf file missing option :: Group: $optionGroup -> Option: $option=";
+        $isValid = 0;
+      }
+    }
+  }
+  
+  return $isValid;
+}
+
+##
 # sub show_cmdline_help
 # Called to display help when called from command line
 # usage show_cmdline_help();
 # return exit(0)
 sub show_cmdline_help {
 
-  # Build help
-  my $help = q(
-  snapPERL.pl [ -c, --conf CONFIG       { Full path to conf file        } ]
-              [ -x, --custom-cmds FILE  { Full path to custom-cmds file } ]
-              [ -S, --stdout 1|0        { Toggle log to stdout          } ]
-              [ -E, --send-email 1|0    { Toggle email send             } ]
-              [ -m, --message-level 1-3 { Set message level             } ]
-              [ -l, --log-level 1-5     { set log level                 } ]
-              [ -X, --custom 1|0        { Toggle custom cmds            } ]
-              [ -M, --pushover 1|0      { Toggle Pushover send          } ]
-              [ -I, --smart 1|0         { Toggle smart logging          } ]
-              [ -P, --pool 1|0          { Toggle snapraid pool          } ]
-              [ -D, --spindown 1|0      { Toggle spindown disks         } ]
-              [ -h, --Help              { This Help                     } ]
-              [ -v, --version           { Display Version               } ]
-  );
+  # Show Version
+  say "snapPERL v$VERSION by Steve Miles (2016) - snapperl.stevemiles.me.uk";
   
-  # Display help
-  say $help;
+  # Show help
+  if ( $argv{help} ) {
+    # Build help
+    my $help = q(
+    snapPERL.pl [ -c  --conf CONFIG         { Full path to conf file        } ]
+                [ -x  --custom-cmds FILE    { Full path to custom-cmds file } ]
+                [ -m  --message-level 1-3   { Set message level             } ]
+                [ -l  --log-level 1-5       { Set log level                 } ]
+                [ --stdout    --nostdout    { Toggle log to stdout          } ]
+                [ --check     --nocheck     { Toggle check option enable    } ]
+                [ --scrub     --noscrub     { Toggle scrub option enable    } ]
+                [ --email     --noemail     { Toggle email send             } ]
+                [ --custom    --nocustom    { Toggle custom cmds            } ]
+                [ --pushover  --nopushover  { Toggle Pushover send          } ]
+                [ --smart     --nosmart     { Toggle smart logging          } ]
+                [ --pool      --nopool      { Toggle snapraid pool          } ]
+                [ --spindown  --nospindown  { Toggle spindown disks         } ]
+                [ -h  --Help                { This Help                     } ]
+                [ -v  --version             { Display Version               } ]
+    );
+    
+    # Display help
+    say $help;
+  }
   
-  # Exit script
+  # Exit script - version and help cause end of script!
   exit (0);
 }
 

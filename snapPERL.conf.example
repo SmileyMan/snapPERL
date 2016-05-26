@@ -19,6 +19,7 @@ changedFiles=500                                              # Max amount of ch
 # with useScrubNew=0 then scrub will be activated when newest unscrubed block gets older than scrubNewest.
 # scrubEnforceMinDays sets a minimum about of days between scrubs. (does not deactivate useScubNew)
 #
+scrubEnable=1                                                 # If set to 0 will totaly disable scrub. Disable all scrub activity including useScrubNew
 scrubNewest=7                                                 # Age of newest un-scrubed block before scub is run (useScrubNew will overide)
 scrubOldest=30                                                # Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
 scrubAge=10                                                   # Data older than days
@@ -64,7 +65,7 @@ snapRaidBin=/usr/local/bin/snapraid                           # *Snapraid binary
 snapRaidConf=/etc/snapraid.conf                               # *Location of snapraid conf file - Linux (comment out for windows)
 #snapRaidBin=C:\snapraid\snapraid.exe                         # Snapraid binary location - Windows - Must point to your snapraid.exe or script will abort (uncomment for windows)
 #snapRaidConf=C:\snapraid\snapraid.conf                       # Location of snapraid conf file - Windows - Must point to your snapraid.conf file or script will abort (uncomment for windows)
-snapRaidTmpLocation=                                          # Location of tmp files (if not defined uses scripts tmp directory) - Default setting is Empty
+#snapRaidTmpLocation=                                          # Location of tmp files (if not defined uses scripts tmp directory) - Default setting is Empty
 preHashOnSync=1                                               # Pre-hash during sync to remove posiblity of silent error on busy machines. Please see snapraid manual http://www.snapraid.it/manual - Recomended Option! - v10.0+ only
 resetTimeStamps=1                                             # Use touch command to reset sub-second time stamps (Snapraid 10.0+)
 spinDown=0                                                    # Spindown array once script completed
@@ -76,7 +77,7 @@ pool=0                                                        # Run pool command
 # Set noVersionWarnings=1 and it will mind it's own business (Fully things could happen. Tested on v10.0)
 #
 logFile=snapPERL.log                                          # Main logfile name
-logFileLocation=                                              # Location of log file (If not defined uses scripts log directory) - Default: Empty
+#logFileLocation=                                              # Location of log file (If not defined uses scripts log directory) - Default: Empty
 logLevel=3                                                    # Level of logging (1:- Critical, 2:- Warning, 3:- Info, 4:- Everything, 5:- Debug)
 messageLevel=3                                                # For pushover/NMA/PushBullet (1:- Critical only 2:- +Warnings 3:- Normal)
 logStdout=1                                                   # If set to 1 sends log file to stdout (Not very useful when run via cron :P)

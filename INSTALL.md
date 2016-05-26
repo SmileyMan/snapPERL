@@ -18,8 +18,8 @@ Email::Send::Gmail (If using gmail)       ->  command: sudo cpan install Email::
 Install Script:
 
 ~~~BASH
-1. wget http://snapperl.stevemiles.me.uk/downloads/latest/snapPERL-latest.zip
-2. tar -zxvf snapPERL-latest.zip
+1. wget http://snapperl.stevemiles.me.uk/downloads/latest/snapPERL-latest.tar.gz
+2. tar -zxvf snapPERL-latest.tar.gz
 3. mv snapPERL-latest snapPERL
 4. cd snapPERL
 5. ./install.sh
@@ -27,6 +27,7 @@ Install Script:
 7. Change settings in custom-cmds to suit (Optional)
 8. ./snapPERL.pl to run
 ~~~
+_(Always run first time on command line - Script will check your snapPERL conf file is valid)_
 
 Manual:
 
@@ -41,8 +42,9 @@ Manual:
 8.  Change settings in custom-cmds to suit (Optional)
 9.  Change attributes of files to suite (chmod 600 on snapPERL.conf highly recommended)
 10. Install modules if needed (See top of this file)
-11. ./snapPERL.pl to run
+11. ./snapPERL.pl to run 
 ~~~
+_(Always run first time on command line - Script will check your snapPERL conf file is valid)_
 
 ### Using git (This will pull latest master commit.. Not a release)
 
@@ -58,6 +60,7 @@ In snapPERL location on drive type
 git pull
 ~~~
 This will not clobber your conf file but be sure to check for any new options
+_(Always run first time on command line - Script will check your snapPERL conf file is valid)_
 
 #####Bleeding edge Dev version
 ~~~
@@ -65,6 +68,7 @@ git pull
 pit merge origin/Dev
 ~~~
 Test first on a new clone - I do break it now and again (I write on machines with no testing enviroment and commit to check when I get home)
+_(Always run first time on command line - Script will check your snapPERL conf file is valid)_
 
 ##### You can of course run as a root crontab. Be happy it does what you need first. 
 ~~~
