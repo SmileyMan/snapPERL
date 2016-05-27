@@ -31,7 +31,7 @@ use File::Spec;          # Used to read absolute path
 use LWP::UserAgent;      # Send Post/Get (For messaging support)
 use JSON::PP;            # Encode data to JSON for storage
 use Getopt::Long;        # Get command line options
-#use Data::Dumper;       # Debug use
+use Data::Dumper;        # Debug use - Dump hashes used
 
 our $VERSION = '0.3.0';
 
@@ -240,7 +240,7 @@ logit(  text    => 'Script Completed',
         message => '',
         level   => 3,
       );
-          
+
 # Add debug information to log
 if ( $opt{logLevel} >= 5 ) { debug_log(); }
 
@@ -1096,18 +1096,48 @@ sub parse_conf {
       $key    =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
       $value  =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
 
-      # Process extra parity
-      if ( $key =~ m/\d-parity/i ) { $conf{xparity}->[ $#{ $conf{xparity} } + 1 ] = $value; }
+      # Process parity - Snapraid v11.0 added multi parity files per parity level. Modified to collect these! (\A forces an anchor and strips main parity entry)
+      if ( $key =~ m/\Aparity/i ) { 
+        my @parityFiles = split(/\,/, $value );
+        foreach my $parityFile ( @parityFiles ) {
+          $parityFile =~ s/^\s+|\s+$//g; 
+          $conf{$key}[ $#{ $conf{$key} } + 1 ] = $parityFile;
+        }
+        next;
+      }
+      
+      # Process extra parity - Snapraid v11.0 added multi parity files per parity level. Modified to collect these!
+      if ( $key =~ m/.+?parity/i ) { 
+        my @parityFiles = split(/\,/, $value );
+        foreach my $parityFile ( @parityFiles ) {
+          $parityFile =~ s/^\s+|\s+$//g; 
+          $conf{xparity}->{$key}[ $#{ $conf{xparity}{$key} } + 1 ] = $parityFile;
+        }
+        next;
+      }
 
       # Process other options and add to hash-array
-      elsif ( $key =~ m/content|exclude|share|smartctl/i ) { $conf{$key}->[ $#{ $conf{$key} } + 1 ] = $value; }
+      elsif ( $key =~ m/content|exclude|share/i ) { 
+        $conf{$key}->[ $#{ $conf{$key} } + 1 ] = $value; 
+        next;
+      }
 
       # Process data disks
       elsif ( $key =~ m/disk|data/i ) {
         my ( $drive, $path ) = split(/\s/, $value, 2);
-        $drive  =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
-        $path   =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
+        $drive  =~ s/^\s+|\s+$//g;
+        $path   =~ s/^\s+|\s+$//g;
         $conf{data}->{$drive} = $path;
+        next;
+      }
+
+      # Process smart options
+      elsif ( $key =~ m/smartctl/i ) {
+        my ( $drive, $smartCmd ) = split(/\s/, $value, 2);
+        $drive      =~ s/^\s+|\s+$//g;
+        $smartCmd   =~ s/^\s+|\s+$//g;
+        $conf{$key}->{$drive} = $smartCmd;
+        next;
       }
 
       # Values left are singular. Add to hash
@@ -1159,12 +1189,15 @@ sub check_conf {
   # Set to 1 to abort
   my $invalidConf = 0;
  
-  # Check parity file
-  if ( not -e $conf{parity} ) { 
+  # Check parity - Does not support checking extra files in v11.0. Don't know yet if snapraid creates these files before it uses them!
+  if ( not defined $conf{parity}[0] or not -e $conf{parity}[0] ) { 
     # No parity file - Set flag to abort
     $invalidConf = 1;
-    logit(  text    => "Warning: Missing parity file: $conf{parity}",
-            message => "Warn: Missing parity file: $conf{parity}",
+    # Prevents undefined warning if not loaded from config!
+    my $parity = defined $conf{parity}[0] ? $conf{parity}[0] : 'Not loaded from config';
+    
+    logit(  text    => "Warning: Missing parity file: $parity",
+            message => "Warn: Missing parity file: $parity",
             level   => 2,
           );
     logit(  text    => 'Warning: Parity not mounted or not built?',
@@ -1202,20 +1235,22 @@ sub check_conf {
   # No valid content file - Set flag to abort
   if ( not $anyValidContent ) { $invalidConf = 1; }
   
-  # Check each extra parity file exists
-  for ( my $i = 0 ; $i <= $#{ $conf{xparity} } ; $i++ ) {
-    if ( not -e $conf{xparity}->[$i] ) { 
-      # Missing extra parity file - Set flag to abort
-      $invalidConf = 1;
-      logit(  text    => "Warning: Missing parity file: $conf{xparity}->[$i]",
-              message => "Warn: Missing parity file: $conf{xparity}->[$i]",
-              level   => 2,
-            );
-      logit(  text    => 'Warning: Parity not mounted or not built?',
-              message => 'Warn: Parity not mounted or not built?',
-              level   => 2,
-            );
-    }
+  # Check each extra parity exists - Does not support checking extra files in v11.0. Don't know yet if snapraid creates these files before it uses them!
+  foreach my $xparity ( keys %{$conf{xparity}} ) {
+      if ( not defined $conf{xparity}->{$xparity} or not -e $conf{xparity}->{$xparity}[0] ) { 
+        # Missing extra parity file - Set flag to abort
+        $invalidConf = 1;
+        # Prevents undefined warning if not loaded from config!
+        my $parity = defined $conf{xparity}->{$xparity}[0] ? $conf{xparity}->{$xparity}[0] : 'Not loaded from config';
+        logit(  text    => "Warning: Missing parity file: $conf{xparity}->{$xparity}[0]",
+                message => "Warn: Missing parity file: $conf{xparity}->{$xparity}[0]",
+                level   => 2,
+              );
+        logit(  text    => 'Warning: Parity not mounted or not built?',
+                message => 'Warn: Parity not mounted or not built?',
+                level   => 2,
+              );
+      }
   }
   
   if ( $invalidConf ) {
@@ -1828,6 +1863,9 @@ sub logit {
    
     # Cleanup
     script_comp();
+    
+    # Add debug information to log
+    if ( $opt{logLevel} >= 5 ) { debug_log(); }
 
     # Kill script - Return 1 indicating fatal exit
     exit(1);
@@ -1985,66 +2023,17 @@ sub compare_data_structure {
 ##
 # sub debug_log
 # Called if logLevel set to 5 (Debug).
-# Cycles over multi dimension hash created from config file.
+# Dumps the contents of the main scrip hashes
 # usage debug_log();
 # return void
 sub debug_log {
 
-  # May just use Data::Dumper for this
-
-  # Debug -> Log Options!
-  logit(  text    => '-------- Options --------',
-          message => '',
-          level   => 5,
-        );
-        
-  foreach ( sort( keys %opt ) ) {
-    logit(  text    => "Option :: $_ -> $opt{$_}",
-            message => '',
-            level   => 5,
-          );
-  }
-  
-  logit(  text    => '-------- Options End --------',
-          message => '',
-          level   => 5,
-        );
-
-  # Debug -> Log Config!
-  logit(  text    => '-------- Config --------',
-          message => '',
-          level   => 5,
-        );
-        
-  foreach my $confKey ( sort(keys %conf) ) {
-    if ( ref($conf{$confKey}) eq "HASH" ) {
-      foreach my $diskKey ( keys %{ $conf{$confKey} } ) {
-        logit(  text    => "Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}",
-                message => '',
-                level   => 5,
-          );
-      }
-    }
-    elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
-      for ( my $i = 0 ; $i <= $#{ $conf{$confKey} } ; $i++ ) {
-        logit(  text    => "Config : $confKey -> $i -> $conf{$confKey}->[$i]",
-                message => '',
-                level   => 5,
-              );
-      }
-    }
-    else {
-      logit(  text    => "Config : $confKey -> $conf{$confKey}",
-              message => '',
-              level   => 5,
-          );
-    }
-  }
-  
-  logit(  text    => '-------- Config End--------',
-          message => '',
-          level   => 5,
-        );
+  # Dump contents of hashes to stdout 
+  say Data::Dumper->Dump( [ \%argv        ],  [ qw(*argv)       ] );
+  say Data::Dumper->Dump( [ \%opt         ],  [ qw(*opt)        ] );
+  say Data::Dumper->Dump( [ \%conf        ],  [ qw(*conf)       ] );
+  say Data::Dumper->Dump( [ \%customCmds  ],  [ qw(*customCmds) ] );
+  say Data::Dumper->Dump( [ \%diffHash    ],  [ qw(*diffHash)   ] );
 
   return;
 }
@@ -2062,15 +2051,15 @@ sub validate_conf {
   
   # Anonymous hash containing values that should exisit in conf file
   my $validate = { 
-    syncOptions       => [ qw( deletedFiles changedFiles ) ],
-    scrubOptions      => [ qw( scrubEnable scrubNewest scrubOldest scrubAge scrubPercentage useScrubNew scrubEnforceMinDays ) ],
-    smartOptions      => [ qw( smartLog smartWarn smartDiskWarn smartMaxDriveTemp smartDiskErrorsWarn) ],
-    checkOptions      => [ qw( checkSuspectDisks checkAuditOnly checkOnlyAfterIncrease checkDiskFailPercentage checkMinTimeBetweenChecks checkAutoFix) ],
-    snapOptions       => [ qw( snapRaidBin snapRaidConf preHashOnSync resetTimeStamps spinDown pool) ],
-    otherOptions      => [ qw( logFile messageLevel logStdout useCustomCmds noVersionWarnings ) ],
-    emailOptions      => [ qw( emailSend emailUseSendmail emailFromAddress emailToAddress ) ],
-    smtpOptions       => [ qw( emailUseSmtp emailSmtpFromAddress emailSmtpToAddress emailSmtpAddress emailSmtpPort emailSmtpSSL emailSmtpUser emailSmtpPass ) ],
-    gmailOptions      => [ qw( emailUseGmail emailGmailToAddress emailGmailUser emailGmailPass ) ],
+    syncOptions       => [ qw( deletedFiles changedFiles )                                                                                                            ],
+    scrubOptions      => [ qw( scrubEnable scrubNewest scrubOldest scrubAge scrubPercentage useScrubNew scrubEnforceMinDays )                                         ],
+    smartOptions      => [ qw( smartLog smartWarn smartDiskWarn smartMaxDriveTemp smartDiskErrorsWarn)                                                                ],
+    checkOptions      => [ qw( checkSuspectDisks checkAuditOnly checkOnlyAfterIncrease checkDiskFailPercentage checkMinTimeBetweenChecks checkAutoFix)                ],
+    snapOptions       => [ qw( snapRaidBin snapRaidConf preHashOnSync resetTimeStamps spinDown pool)                                                                  ],
+    otherOptions      => [ qw( logFile messageLevel logStdout useCustomCmds noVersionWarnings )                                                                       ],
+    emailOptions      => [ qw( emailSend emailUseSendmail emailFromAddress emailToAddress )                                                                           ],
+    smtpOptions       => [ qw( emailUseSmtp emailSmtpFromAddress emailSmtpToAddress emailSmtpAddress emailSmtpPort emailSmtpSSL emailSmtpUser emailSmtpPass )         ],
+    gmailOptions      => [ qw( emailUseGmail emailGmailToAddress emailGmailUser emailGmailPass )                                                                      ],
     pushoverOptions   => [ qw( pushOverSend pushOverKey pushOverToken pushOverUrl pushDefaultPriority pushWarningPriority pushCriticalPriority pushSound pushDevice ) ],
     #nmaOptions        => [ qw( nmaSend ) ],
     #pushbulletOptions => [ qw( pushBulletSend ) ],

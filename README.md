@@ -1,6 +1,6 @@
 # snapPERL v0.3.0
 
-#####Helper script for snapraid created in PERL
+#####Automation script for Snapraid created in PERL
 
  Snapraid wrapper script written in PERL. Enables automation using cron for your Array Syncs
 
@@ -9,34 +9,40 @@
 
 ## Website: http://snapperl.stevemiles.me.uk
 
+---
+
 ### Linux Compatible
 #### Tested on Ubuntu 16.04LTS
 
 ### Windows Compatible
 #### Tested on Windows 10 - Snapraid x64 v10.0 and Latest ActivePerl 
  
-#####Script is expected to be run as root so calls snapraid as root
+--- 
+ 
+#####Script is expected to be run as root so it calls snapraid as root
 
 #### _Please Read!_
 
-CHANGELOG
-INSTALL.md
-INSTALL-WINDOWS.md
-LICENSE
+* CHANGELOG
+* INSTALL.md
+* INSTALL-WINDOWS.md
+* LICENSE
+* _And the extensive comments for the options in: snapPERL.conf.example_
 
-_And the extensive comments for the options in: snapPERL.conf.example_
-
+---
 
 #Created by Steve Miles (SmileyMan). 
 
-https://github.com/SmileyMan
+http://snapperl.smileyman.me.uk
+https://github.com/SmileyMan/snapPERL
 
-Inspired by bash script http://zackreed.me/articles/83-updated-snapraid-sync-script 
-- Zack Reed (http://zackreed.me)
+_Inspired by bash script http://zackreed.me/articles/83-updated-snapraid-sync-script 
+- Zack Reed (http://zackreed.me)_
 
-Which in turn was a modified version of https://gist.github.com/bfg100k/87a1bbccf4f15d963ff7 
-- Sidney Chong first created in 2011
+_Which in turn was a modified version of https://gist.github.com/bfg100k/87a1bbccf4f15d963ff7 
+- Sidney Chong first created in 2011_
 
+---
 
 #Work in Progress.
 
@@ -44,9 +50,13 @@ This is just a wrapper for snapraid.exe
 and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
 (only snapraid.exe manipulates the data)
 
+---
+
 ####Script passes Perl::Critic - Severity: Stern
 
 ###__This script does not write or manipulate and Array Data. It is a wrapper for snapraid http://www.snapraid.it/__
+
+---
 
 #### Command Line Options
 ##### Only for overrides set all permanent options in snapPERL.conf

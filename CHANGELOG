@@ -14,6 +14,7 @@
             Added command line options that override conf settings if needed - snapPERL.pl -h
             Added option to disable all scrub activity
             Added snapPERL conf file checker - To enable easy upgrades
+            Conf reader modified to support conf file from upcomming Snapraid v11.0 (Multi parity files per parity)
 
 11/05/2016 v0.2.2
             Added windows support. No help files yet but tested and working. Must have ActivePerl / Strawberry Perl or DWIM Perl installed

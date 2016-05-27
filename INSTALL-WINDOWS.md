@@ -66,7 +66,7 @@ Click 'Change User or Group'
 Enter 'Local' in box and click 'Check Names'
 Select 'LOCAL SERVICE'
 
-Click on 'Run with highest privileges (Snapraid needs to be elevated)
+Click on 'Run with highest privileges (Snapraid needs to be elevated but not sure if this is needed with LOCAL SERVICE)
 
 Under 'Settings' tab change max run time to '1 day'
 
@@ -75,4 +75,4 @@ Click 'OK'
 Done!
 ~~~
 
-WOW and GUI's make things more easy? :P
+WOW and GUI's make things more easier? :P
