@@ -2,7 +2,7 @@
 
 #####Automation script for Snapraid created in PERL
 
- Snapraid wrapper script written in *PERL*. Enables automation using cron for your Array Syncs
+ Snapraid wrapper script written in **PERL**. Enables automation using cron for your Array Syncs
 
  Runs sync commands and verifys data using scrub command. Sends alerts when are issues found
  and aborts where needed. Plus much more see: _snapPERL.conf.example_
@@ -15,7 +15,7 @@
 ##### Tested on Ubuntu 16.04LTS - Snapraid x64 v10.0
 
 ## Windows Compatible 
-#### _Requires PERL distribution to be installed_
+#### _Requires a PERL distribution to be installed_
 ##### Tested on Windows 10 - Snapraid x64 v10.0 and Latest ActivePerl 
  
 --- 
@@ -53,7 +53,7 @@ Which in turn was a modified version of this bash script: [SnapRAID Helper](http
 
 It only ever calls snapraid (diff/status/sync/scrub/check/smart/down)
 
-_(only snapraid.exe manipulates the data)_
+_(only Snapraid manipulates the data)_
 
 ####Script passes Perl::Critic - Severity: Stern
 
