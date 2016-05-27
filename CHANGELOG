@@ -1,4 +1,4 @@
-##/##/#### v0.3.0
+27/05/2016 v0.3.0
             Sanity check for loaded conf file before calls to snapraid
             Code added to catch fatal calls to load Modules not installed (Gmail and Email)
             Using snapraid inbuilt logging. snapraid will still carp to STDERR for fatals and this will be picked up
