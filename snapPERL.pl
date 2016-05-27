@@ -8,10 +8,13 @@
 #############################################################################################
 
 #############################################################################################
-# Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
 #
-# Why PERL. Perl is cleaner. More powerfull and I can use HASH'es. Been over 10 years since
-# I worked with PERL and now remember why I loved it. Did not get on with BASH syntax!
+# Created by Steve Miles (SmileyMan). https://github.com/SmileyMan
+#                                     http://snapperl.stevemiles.me.uk/
+#                                     http://stevemiles.me.uk/
+#
+# Email Support                       snapperl@stevemiles.me.uk
+# (Please note: Free script so will help where I can)
 #
 #############################################################################################
 
@@ -23,17 +26,18 @@ use strict;
 use warnings;
 
 # Modules
-use Carp qw(croak);   # Croak to abort script
-use Module::Load;     # Perl core module for on demand loading of optional modules
-use File::Spec;       # Used to read absolute path
-use LWP::UserAgent;   # Send Post/Get (For messaging support)
-use JSON::PP;         # Encode data to JSON for storage
+use Module::Load;        # Perl core module for on demand loading of optional modules
+use File::Spec;          # Used to read absolute path
+use LWP::UserAgent;      # Send Post/Get (For messaging support)
+use JSON::PP;            # Encode data to JSON for storage
+use Getopt::Long;        # Get command line options
+use Data::Dumper;        # Debug use - Dump hashes used
 
-our $VERSION = 0.2.0;
+our $VERSION = '0.3.0';
 
 ############################## Script only from here ########################################
 
-# Get os name from perl inbuilt varible
+# Get os name from perl inbuilt variable
 my $osName = $^O;
 my $slashType;
 
@@ -52,10 +56,41 @@ my ( $scriptPath, $scriptName ) = $absLocation =~ m/(.+[\/\\])(.+)$/;
 # Define options file
 my $optionsFile = $scriptPath . 'snapPERL.conf';
 
-# Defind custom commands file
+# Define custom commands file
 my $customCmdsFile = $scriptPath . 'custom-cmds';
 
-# Define package varibles (Lexical to package)
+# Get file locations from command line if given
+my %argv;
+#Getops object
+my $cmdLineOpts = Getopt::Long::Parser->new;
+#Configure to accept short -? type commandline options
+$cmdLineOpts->configure( qw(gnu_getopt) );
+#get Options
+$cmdLineOpts->getoptions (
+  "conf|c=s"          => \$optionsFile,
+  "custom-cmds|x=s"   => \$customCmdsFile,
+  "message-level|m=i" => \$argv{messageLevel},
+  "log-level|l=i"     => \$argv{logLevel},
+  "stdout!"           => \$argv{logStdout},
+  "check!"            => \$argv{checkSuspectDisks},
+  "scrub!"            => \$argv{scrubEnable},
+  "email!"            => \$argv{emailSend},
+  "custom!"           => \$argv{useCustomCmds},
+  "pushover!"         => \$argv{pushOverSend},
+  "smart!"            => \$argv{smartLog},
+  "pool!"             => \$argv{pool},
+  "spindown!"         => \$argv{spinDown},
+  "help|h"            => \$argv{help},
+  "version|v"         => \$argv{version},
+);
+
+# Display Help or Version and exit;
+if ( $argv{version} or $argv{help} ) { show_cmdline_help(); }
+
+# Croak if no conf file to load
+if ( !-e $optionsFile ) { say "snapPERL conf file: $optionsFile not found - Critical error"; exit(1); }
+
+# Define package variables (Lexical to package)
 my ( $scriptLog, $scriptMessage );
 my ( %diffHash, %opt, %conf, %customCmds );
 
@@ -81,6 +116,12 @@ if ( $opt{useCustomCmds} ) {
 
 # Parse snapraid conf file
 parse_conf();
+
+# Auto mount and unmount parity
+#if ( %opt{autoMountParity} ) { mount_parity(); }
+
+# Check conf hash
+check_conf();
 
 # Get current state.
 snap_status();
@@ -112,29 +153,64 @@ else {
         );
 }
 
-# Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will allways be 0.
-# So second check on oldest scrubbed block is made and scrub called if needed.
-if ( $opt{scrubNewDays} >= $opt{scrubDays} or $opt{scrubOldDays} >= $opt{scrubOldest} ) {
-
-  # Do not scrub un sync'ed array!
-  if ($opt{syncSuccess}) {
-    logit(  text    => "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 
-            message => "Running scrub - Last: $opt{scrubNewDays} - Oldest: $opt{scrubOldDays}",
-            level   => 3,
-          );
-    snap_scrub( plan => "$opt{scrubPercentage}", age => "$opt{scrubAge}" );
+# Use scrubEnforceMinDays option to enforce minimum days between scrubs
+if ( $opt{scrubEnforceMinDays} ) {
+  # Location of json file
+  my $jsonFile = $opt{jsonFileLocation} . $slashType .  'scrublast.json'; 
+   
+  # Save json and end warning if failed to save
+  my $scrubLastRef = load_json( $jsonFile );
   
+  # Get time
+  my $timeNow = time();
+  
+  # Check if enougth time as passed
+  if ( $scrubLastRef->{lastScrubTime} and $scrubLastRef->{lastScrubTime} > $timeNow - ($opt{scrubEnforceMinDays} * 86400) ) {
+    $opt{scrubMinDaysEnforced} = 1;
+  } 
+}
+
+# Stop scrub if scrubEnforceMinDays in effect and min days not passed
+if ( not $opt{scrubMinDaysEnforced} and $opt{scrubEnable} ) {
+  
+  # Scrub needed? If sync is run daily with 'scrub -p new' $opt{scrubNewDays} will always be 0.
+  # So second check on oldest scrubbed block is made and scrub called if needed.
+  if ( $opt{scrubNewDays} >= $opt{scrubNewest} or $opt{scrubOldDays} >= $opt{scrubOldest} ) {
+  
+    # Do not scrub un sync'ed array!
+    if ($opt{syncSuccess} or not $diffHash{sync} ) {
+      logit(  text    => "Running scrub - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}", 
+              message => "Running scrub - Last: $opt{scrubNewDays} - Oldest: $opt{scrubOldDays}",
+              level   => 3,
+            );
+      snap_scrub( plan => "$opt{scrubPercentage}", age => "$opt{scrubAge}" );
+    
+    }
+    else {
+      logit(  text    => 'Sync was not run. Scrub only performed after successful sync', 
+              message => 'No sync so Scrub not performed}',
+              level   => 3,
+            );  
+    }
   }
   else {
-    logit(  text    => 'Sync was not run. Scrub only performed after successful sync', 
-            message => 'No sync so Scrub not performed}',
+    logit(  text    => "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}",
+            message => 'No post sync scrub needed',
             level   => 3,
-          );  
+          );
   }
 }
+elsif ( not $opt{scrubEnable} ) {
+  # Log that all scrub activity is disabled
+  logit(  text    => "No Scrub: All scrub activity disabled in configuration",
+          message => 'No Scrub. All scrub activity disabled',
+          level   => 3,
+        );
+}
 else {
-  logit(  text    => "No Scrub needed - Days since last scrub:- $opt{scrubNewDays} - Oldest scrubbed block:- $opt{scrubOldDays}",
-          message => 'No post sync scrub needed',
+  # Log that scrubEnforceMinDays not passed
+  logit(  text    => "No Scrub: Days since last scrub does not exceed min setting of: $opt{scrubEnforceMinDays} days",
+          message => 'No Scrub. Enforce Min Days in effect',
           level   => 3,
         );
 }
@@ -164,7 +240,7 @@ logit(  text    => 'Script Completed',
         message => '',
         level   => 3,
       );
-          
+
 # Add debug information to log
 if ( $opt{logLevel} >= 5 ) { debug_log(); }
 
@@ -182,15 +258,33 @@ script_comp();
 # return void
 sub snap_status {
 
-  # Get snapraid version
-  my ( $output, $exitCode ) = snap_run( opt => '--version', cmd => '' );
-  ( $opt{snapVersion} ) = $output =~ m/snapraid\s+v(\d+.\d+)/;
+  # Define call return vars
+  my ($output, $exitCode, $snapLog);
+
+  # Get snapraid version (cmd => 'version' not needed but snapraid ignores it so stndout/stderr files get right name)
+  ( $output, $exitCode ) = snap_run( opt => '--version', cmd => 'version' );
+  ( $opt{snapVersion} ) = $output =~ m/snapraid\s+?v(\d+?.\d+?)/i;
+  
+  # Not using a current version of snapraid..
+  if ( $opt{snapVersion} < 10.0 and not $opt{noVersionWarnings} ) {
+    logit(  text    => 'Info: snapPERL tested and works best on snapraid v10.0+',
+            message => 'Info: snapPERL works best on snapraid v10.0+',
+            level   => 3,
+          );
+  }
+  # Very old version - Can not ensure support
+  elsif ( $opt{snapVersion} < 9.0 and not $opt{noVersionWarnings} ) {
+    logit(  text    => 'Info: Snapraid < 9.0 not recomended - Please visit http://www.snapraid.it/download for latest version',
+            message => 'Info: Snapraid < 9.0 not recomended',
+            level   => 3,
+          );
+  }
 
   # Run snapraid status
-  ( $output, $exitCode ) = snap_run( opt => '', cmd => 'status' );
+  ( $output, $exitCode, $snapLog ) = snap_run( opt => '', cmd => 'status', snaplog => 1);
 
   # Critical error. Status shows errors detected.
-  if ( $output !~ m/No\s+error\s+detected/ ) { 
+  if ( $output !~ m/No\s+?error\s+?detected/i ) { 
     logit(  text    => 'Critical: Status shows errors detected',
             message => 'Crit: Status shows errors detected',
             level   => 1,
@@ -199,19 +293,28 @@ sub snap_status {
   }
 
   # Critical error. Sync currently in progress.
-  if ( $output !~ m/No\s+sync\s+is\s+in\s+progress/ ) { 
+  if ( $output !~ m/No\s+?sync\s+?is\s+?in\s+?progress/i ) { 
     logit(  text    => 'Abort: Sync currently in progress',
             message => 'Abort: Sync currently in progress',
             level   => 2,
             abort   => 1,
           ); 
   }
+  
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
+  }
 
   # Check for zero sub-second timestamps and correct.
-  if ( $output =~ m/You have\s+(\d+)\s+files/ ) {
+  if ( $output =~ m/You\s+?have\s+?(?<timeStamps>\d+?)\s+?files/i ) {
 
-    # Grab match so I don't clobber it later with new code
-    my $timeStamps = $1;
+    # Grab match so I don't clobber it later with new match
+    my $timeStamps = $+{timeStamps};
 
     # Reset enabled in config and snapraid supports?
     if ( $opt{resetTimeStamps} && $opt{snapVersion} >= 10.0 ) {
@@ -221,10 +324,10 @@ sub snap_status {
       foreach my $line ( split(/\n/, $touch) ) {
 
         # Log files where time stamps where changed.
-        if ( $line =~ m/touch/ ) {
+        if ( $line =~ m/touch/i ) {
 
           # Remove word 'touch' before logging
-          $line =~ s/touch\s//;
+          $line =~ s/touch\s//i;
           logit(  text    => "Zero sub-second timestamp reset on :- $line",
                   message => '',
                   level   => 4,
@@ -251,10 +354,10 @@ sub snap_status {
   }
 
   # Get number of days since last scrub
-  ( $opt{scrubNewDays} ) = $output =~ m/the\s+newest\s+(\d+)./;
+  ( $opt{scrubNewDays} ) = $output =~ m/the\s+?newest\s+?(\d+?)./i;
 
   # Get the age of the oldest scrubbed block (Used when $opt{useScrubNew} in effect)
-  ( $opt{scrubOldDays} ) = $output =~ m/scrubbed\s+(\d+)\s+days\s+ago/;
+  ( $opt{scrubOldDays} ) = $output =~ m/scrubbed\s+?(\d+?)\s+?days\s+?ago/i;
 
   return;
 }
@@ -266,49 +369,40 @@ sub snap_status {
 # return void
 sub snap_diff {
 
-  # Lexicals
-  my ( $diffLogTxt, $missingValues );
-
   # Run snapraid diff
-  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'diff' );
+  my ( $output, $exitCode, $snapLog ) = snap_run( opt => '', cmd => 'diff', snaplog => 1 );
 
-  # Assign values to hash
-  ( $diffHash{equal} )    = $output =~ m/(\d+)\s+equal/;
-  ( $diffHash{added} )    = $output =~ m/(\d+)\s+added/;
-  ( $diffHash{removed} )  = $output =~ m/(\d+)\s+removed/;
-  ( $diffHash{updated} )  = $output =~ m/(\d+)\s+updated/;
-  ( $diffHash{moved} )    = $output =~ m/(\d+)\s+moved/;
-  ( $diffHash{copied} )   = $output =~ m/(\d+)\s+copied/;
-  ( $diffHash{restored} ) = $output =~ m/(\d+)\s+restored/;
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
+  }
 
-  # If any of the diff values missing stop script.
+  # Add each diff value to %diffHash
   foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
-    if ( !defined $diffHash{$diffKey} ) {
+    if ( $output =~ m/(?<diffValue>\d+?)\s+?$diffKey/i ) {
+      $diffHash{$diffKey} = $+{diffValue};
+    }
+    else {
+      # Opps we did not get a value? Abort!
       logit(  text    => "Warning: Missing value \'$diffKey\' during diff command!",
-              message => '',
+              message => 'Abort: Diff values missing',
               level   => 2,
+              abort   => 1,
             );
-      $missingValues = 1;
-      
     }
   }
 
-  # Missing values?
-  if ( $missingValues ) { 
-    logit(  text    => 'Abort: Values missing from snapraid diff',
-            message => 'Abort: Diff values missing',
-            level   => 2,
-            abort   => 1,
-          );
-  }
-
   # Sync needed?
-  $diffHash{sync} = $output =~ m/There\s+are\s+differences/ ? 1 : 0;
+  $diffHash{sync} = $output =~ m/There\s+?are\s+?differences/i ? 1 : 0;
+  #$diffHash{sync} = $exitCode;
   
   # Log diff output
-  foreach my $key ( sort(keys %diffHash) ) {
-    $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " ";
-  }
+  my $diffLogTxt;
+  foreach my $key ( sort(keys %diffHash) ) { $diffLogTxt .= "-> " . $key . ' = ' . $diffHash{$key} . " "; }
   logit(  text    => $diffLogTxt,
           message => '',
           level   => 3,
@@ -324,18 +418,35 @@ sub snap_diff {
 # return void
 sub snap_sync {
 
-  # Lexicals
+  # Lexical's
   my $excludedCount = 0;
   my ( $dataProcessed, $fullLog );
+  
+  my ( $output, $exitCode, $snapLog );
+  # Use pre-hash on sync? Snapraid version must be 10.0+
+  if ( $opt{preHashOnSync} and $opt{snapVersion} >= 10.0 ) { 
+    # Run snapraid sync command with pre-hash - Recommended on v10.0
+    ( $output, $exitCode, $snapLog ) = snap_run( opt => '-h', cmd => 'sync', snaplog => 1 );    
+  }
+  else {
+    # Run snapraid sync command no pre-hash
+    ( $output, $exitCode, $snapLog ) = snap_run( opt => '', cmd => 'sync', snaplog => 1 );  
+  }
 
-  # Run snapraid sync command
-  my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'sync' );
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
+  }
 
   # Process output
   foreach my $line ( split(/\n/, $output) ) {
 
     # Match for excluded files
-    if ( $line =~ m/Excluding\s+file/ ) {
+    if ( $line =~ m/Excluding\s+?file/i ) {
       $excludedCount++;
     }
     else {
@@ -343,10 +454,10 @@ sub snap_sync {
     }
 
     # Get size of data processed
-    if ( $line =~ m/completed/ ) { ( $dataProcessed ) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
+    if ( $line =~ m/completed/i ) { ( $dataProcessed ) = $output =~ m/completed,?\s+?(\d+?)\s+?MB\s+?processed/i; }
 
     # Was it a success?
-    if ( $line =~ m/Everything\s+OK/ ) { $opt{syncSuccess} = 1; }
+    if ( $line =~ m/Everything\s+?OK/i or $line =~ m/Nothing\s+?to\s+?do/i ) { $opt{syncSuccess} = 1; }
 
   }
 
@@ -368,11 +479,11 @@ sub snap_sync {
   }
 
   # New in snapraid. Verify new data from sync.
-  if ( $opt{useScrubNew} ) {
+  if ( $opt{useScrubNew} and $opt{scrubEnable} ) {
 
     # Check its a compatible version of snapraid.
     if ( $opt{snapVersion} >= 9.0 ) {
-      logit(  text    => 'ScrubNew option set. Scrubing lastest sync data',
+      logit(  text    => 'ScrubNew option set. Scrubing latest sync data',
               message => 'Scrubbing latest sync data',
               level   => 3,
           );
@@ -386,6 +497,13 @@ sub snap_sync {
             );
     }
   }
+  elsif ( not $opt{scrubEnable} ) {
+    # Log that all scrub activity is disabled
+    logit(  text    => "No Scrub: All scrub activity disabled in configuration",
+            message => 'No Scrub. All scrub activity disabled',
+            level   => 3,
+          );
+    }
   return;
 }
 
@@ -400,27 +518,56 @@ sub snap_scrub {
   my %cmdArgs = @_;
   my $dataProcessed;
   
+  if ( $cmdArgs{plan} eq 'new' ) { $cmdArgs{planNew} = 1; }
+  
   if ( $cmdArgs{plan} ) { $cmdArgs{plan} = "-p $cmdArgs{plan}"; }
   if ( $cmdArgs{age} )  { $cmdArgs{age}  = "-o $cmdArgs{age}";  }
 
-  my ( $output, $exitCode ) = snap_run( opt => "$cmdArgs{plan} $cmdArgs{age}", cmd => 'scrub' );
+  my ( $output, $exitCode, $snapLog ) = snap_run( opt => "$cmdArgs{plan} $cmdArgs{age}", cmd => 'scrub', snaplog => 1 );
+
+  # Abort if log shows and DANGER warnings !
+  if ( $snapLog =~ m/DANGER/ ) {
+    logit(  text    => 'Critical: Snapraid log reports DANGER - Script aborting - Please check logs ASAP!',
+            message => 'Crit: Snapraid log reports DANGER ',
+            level   => 1,
+            abort   => 1,
+          ); 
+  }
 
   #Get size of data processed
-  if ( $output =~ m/completed/ ) { ( $dataProcessed ) = $output =~ m/completed,\s+(\d+)\s+MB processed/; }
+  if ( $output =~ m/completed/i ) { ( $dataProcessed ) = $output =~ m/completed,?\s+?(\d+?)\s+?MB processed/i; }
 
   # Was it a success?
-  if ( $output =~ m/Everything\s+OK/ ) {
+  if ( $output =~ m/Everything\s+?OK/i ) {
+    
+    # Output scrub time to json
+    if ( $opt{scrubEnforceMinDays} and not $cmdArgs{planNew} ) {
+  
+      my $timeNow = time();
+      my $scrubTime = { lastScrubTime => $timeNow };
+    
+      # Location of json file
+      my $jsonFile = $opt{jsonFileLocation} . $slashType .  'scrublast.json'; 
+     
+      # Save json and end warning if failed to save
+      if ( !save_json( $jsonFile, $scrubTime ) ) {
+        logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+                message => 'Warn: Unable to write to json dir',
+                level   => 2,
+              );
+      }
+    }  
     # Log details from scrub.
     logit(  text    => "Snapraid scrub completed: $dataProcessed MB processed",
             message => "Snapraid scrub comp: $dataProcessed MB",
             level   => 3,
           );
   }
-  elsif ( $output =~ m/Nothing\s+to\s+do/ ) {
+  elsif ( $output =~ m/Nothing\s+?to\s+?do/i ) {
     logit(  text    => 'Snapraid scrub completed: Nothing to do',
             message => 'Snapraid scrub comp: Nothing to do',
             level   => 3,
-          );    
+          );   
   }
   else {
     # Stop script.
@@ -429,7 +576,7 @@ sub snap_scrub {
             level   => 2,
             abort   => 1,
           ); 
-  }
+  } 
   return;
 }
 
@@ -445,23 +592,25 @@ sub snap_smart {
 
   # Holds disk data to be written out
   my %smartDisk;
+  
+  my %checkDisks;
 
   # Counters
-  my $totalErrors = 0; 
+  my $totalErrors   = 0; 
   my $aggregateTemp = 0; 
-  my $driveNum = 0;
+  my $driveNum      = 0;
 
   # Process Output
   foreach my $line ( split(/\n/, $output) ) {
 
     # Match snapraid log for disk info
-    # Todo: Not happy with this. Works fine but messy and unreadble... To re-visit
-    if ( $line =~ m/\s+\d+\s+\d+\s+\d+\s+\d+%\s+\d\.\d\s+[A-Za-z0-9-]+\s+[\/a-z]+\s+\w+/ ) {
+    # Todo: Not happy with this. Works fine but messy and unreadable... To re-visit
+    if ( $line =~ m/\s+?\d+?\s+?\d+?\s+?\d+?\s+?\d+?%\s+?\d\.\d\s+?[A-Za-z0-9-]+?\s+?[\/a-z]+?\s+?\w+/i ) {
 
       # Get params
-      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(\d\.\d)\s+([A-Za-z0-9-]+)\s+([\/a-z]+)\s+(\w+)/;
+      my ( $temp, $days, $error, $fp, $size, $serial, $device, $disk ) = $line =~ m/\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)\s+?(\d+?)%\s+?(\d\.\d)\s+?([A-Za-z0-9-]+?)\s+?([\/a-z]+?)\s+?(\w+)/i;
 
-      # Perl grabs these has strings and I want nums to be compared and go into json string
+      # Perl grabs these as strings and I want nums to be compared and go into json string
       $temp   = int($temp);
       $error  = int($error);
       $fp     = int($fp);
@@ -475,6 +624,7 @@ sub snap_smart {
       $smartDisk{$serial}->{temp}   = $temp;
       $smartDisk{$serial}->{error}  = $error;
       $smartDisk{$serial}->{fp}     = $fp;
+      $smartDisk{$serial}->{disk}   = $disk;
 
       $fp = sprintf( "%02d", $fp );
     
@@ -486,7 +636,7 @@ sub snap_smart {
       # Warn if Fail Percentage exceeds limit sit in config
       if ( $fp > $opt{smartDiskWarn} ) {
         $smartDisk{$serial}->{fpwarn} = 1;
-        logit(  text    => "Warning: Fail percentage for $serial has exceded warning level",
+        logit(  text    => "Warning: Fail percentage for $serial has exceeded warning level",
                 message => 'Warn: Fail % for $device > warning level',
                 level   => 2,
               );
@@ -513,12 +663,18 @@ sub snap_smart {
       }
       else { $smartDisk{$serial}->{errorwarn} = 0; }
 
+      # If disk exceeds settings for running a check add it to the checkDisks hash for processing - FP at 100% forces past checkOnlyAfterIncrease
+      if ( ($opt{checkSuspectDisks} and (not $opt{checkOnlyAfterIncrease} or $fp == 100)) and $fp > $opt{checkDiskFailPercentage} ) {
+        # Add $fp to send to check_disks();
+        $checkDisks{$disk} = $fp;
+      }
+
     }
-    elsif ( $line =~ m/next\s+year\s+is/ ) {
+    elsif ( $line =~ m/next\s+?year\s+?is/i ) {
 
       if ( $driveNum != 0 ) {
         # Get FP for array
-        my ( $arrayFail ) = $line =~ m/next\s+year\s+is\s+(\d+)%/;
+        my ( $arrayFail ) = $line =~ m/next\s+?year\s+?is\s+?(\d+?)%/i;
         $smartDisk{ARRAY}->{fp} = $arrayFail;
         logit(  text    => "Calculated chance of at least one drive failing in the next year is $arrayFail%",
                 message => "Drive fail within year: $arrayFail%",
@@ -530,11 +686,12 @@ sub snap_smart {
         $smartDisk{ARRAY}->{fp}         = int($arrayFail);
         $smartDisk{ARRAY}->{tempwarn}   = 0;
         $smartDisk{ARRAY}->{errorwarn}  = 0;
+        $smartDisk{ARRAY}->{disk}       = 'All';
   
         # Warn if Fail Percentage for Array exceeds limit sit in config
         if ( $arrayFail > $opt{smartWarn} ) {
           $smartDisk{ARRAY}->{fpwarn} = 1;
-          logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceded warning level',
+          logit(  text    => 'Warning: Chance of disk in array failing within the next year has exceeded warning level',
                   message => 'Warn: Drive fail withing year > warning level',
                   level   => 2,
                 );
@@ -542,7 +699,7 @@ sub snap_smart {
         else { $smartDisk{ARRAY}->{fpwarn} = 0; }
       }
       else {
-        logit(  text    => 'No drive infromation was detected - Are you using VHD mounts?',
+        logit(  text    => 'No drive information was detected - Are you using VHD mounts?',
                 message => 'No drive info - Using VHD?',
                 level   => 3,
               );
@@ -550,28 +707,19 @@ sub snap_smart {
     }
   }
   
-  # Location of jason file for smart data
+  # Location of Json file for smart data
   my $jsonSmartFile = $opt{jsonFileLocation} . $slashType .  'smartout.json';
 
-  # Load json conf from last run 
-  my $preSmart = slurp_file($jsonSmartFile);
- 
-  # Decode json to hash
-  my $smartDiskInRef;
-  my %smartDiskIn;
-  if ( $preSmart ) { 
-    $smartDiskInRef = decode_json $preSmart; 
-    %smartDiskIn = %{$smartDiskInRef}
-  }
-  
-  
+  # Load json as a data reference
+  my $smartDiskInRef = load_json($jsonSmartFile);
+
   # Data from last run
-  if ( %smartDiskIn ) {
-    foreach my $key (keys %smartDiskIn) {
+  if ( $smartDiskInRef ) {
+    foreach my $key (keys %{$smartDiskInRef} ) {
       # Valid key in new hash to compare
       if ( exists $smartDisk{$key} ) {
         # Temp increased since last run and warn sent
-        if ( ($smartDiskIn{$key}->{temp} < $smartDisk{$key}->{temp}) and $smartDisk{$key}->{tempwarn} ) {
+        if ( ($smartDisk{$key}->{temp} > $smartDiskInRef->{$key}{temp}) and $smartDisk{$key}->{tempwarn} ) {
           logit(  text    => "Warning: Temp of drive: $key increased since last run",
                   message => "Warn: Temp increased for drive: $key",
                   level   => 2,
@@ -579,15 +727,19 @@ sub snap_smart {
           
         } 
         # Fail percentage increased since last run
-        if ( $smartDiskIn{$key}->{fp} < $smartDisk{$key}->{fp} ) {
+        if ( $smartDisk{$key}->{fp} > $smartDiskInRef->{$key}{fp} ) {
           logit(  text    => "Warning: Fail Percentage of drive: $key increased since last run",
                   message => "Warn: FP increased for drive: $key",
                   level   => 2,
                 );
-          
+          # If disk exceeds settings for running a check add it to the checkDisks hash for processing
+          if ( $opt{checkSuspectDisks}  and $smartDisk{$key}->{fp} > $opt{checkDiskFailPercentage} ) {
+            # Add $fp to send to check_disks();
+            $checkDisks{$smartDisk{$key}->{disk}} = $smartDisk{$key}->{fp};
+          }
         } 
         # Errors increased since last run
-        if ( $smartDiskIn{$key}->{error} < $smartDisk{$key}->{error} ) {
+        if ( $smartDisk{$key}->{error} > $smartDiskInRef->{$key}{error} ) {
           logit(  text    => "Warning: Errors of drive: $key increased since last run",
                   message => "Warn: Errors increased for drive: $key",
                   level   => 2,
@@ -597,21 +749,168 @@ sub snap_smart {
       }
     }
   }
-
-  # Encode smartdata to json
-  my $smartDiskOut = encode_json \%smartDisk;
-
-  # Write out to json directory (Used to chack f
-  my $fileWritten = write_file( filename  => $jsonSmartFile,
-                                contents  => \$smartDiskOut,
-                               );
-  if ( !$fileWritten ) {
-    logit(  text    => "Info: Unable to write to: $opt{jsonFileLocation}",
-            message => 'Info: Unable to write to json dir',
-            level   => 3,
+  
+  # Save json and end warning if failed to save
+  if ( !save_json( $jsonSmartFile, \%smartDisk ) ) {
+    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Warn: Unable to write to json dir',
+            level   => 2,
           );
   }
-                                
+
+  # Disks added to %checkDisks hash? Well lets process them           
+  if ( %checkDisks ) {
+    #Send ref to this has to check_disks();
+    snap_check( \%checkDisks );
+  }                   
+  return;
+}
+
+# sub snap_check
+# Runs snapraid check command on suspect disks with high Fail Percentages
+# usage snap_check( \%hash );
+# return void
+sub snap_check {
+
+  # Get reference to passed hash
+  my $disksToProcess = shift;
+  
+  # Nothing sent then stright back
+  return unless ( %{$disksToProcess} );
+    
+  # Location of Json file for smart data
+  my $jsonCheckFile = $opt{jsonFileLocation} . $slashType .  'checkfile.json';
+
+  # Load json as a data reference
+  my $checkInRef = load_json($jsonCheckFile);
+  
+  # Get current time
+  my $timeNow = time();
+  
+  # Process sent disks
+  foreach my $disk ( keys(%{$disksToProcess}) ) {
+    
+    # Dont run check if one has been run within checkMinTimeBetweenChecks days
+    if ( $checkInRef->{$disk} < $timeNow - ($opt{checkMinTimeBetweenChecks} * 86400) ) {
+  
+      # Var for options
+      my $options;
+      
+      # Var for check log per disk
+      my $filesDamaged;
+      
+      # Logit
+      logit(  text    => "Starting snapraid check on disk: $disk - Fail Percentage: $disksToProcess->{$disk}% - This proccess will take some time", 
+              message => "Starting snapraid check on disk: $disk",
+              level   => 3,
+           );
+            
+      # Build options
+      $options = "-d $disk";
+      
+      # Add audit only tag
+      if ( $opt{checkAuditOnly} ) { $options .= ' -a'}
+  
+      my ( $output, $exitCode ) = snap_run( opt => $options, cmd => 'check' );
+      
+      # Process output
+      foreach my $line ( split(/\n/, $output) ) {
+        
+        if ( $line =~ m/\bdamaged|\brecoverable/i ) {
+  
+          # Remove word 'damaged' or 'recoverable' before logging
+          $line =~ s/damaged|recoverable//i;
+          # Remove whitespace
+          $line =~ s/^\s+|\s+$//g;
+          
+          # Add to check log
+          $filesDamaged .= "Damaged: $line";
+          # Logit @ Lv4
+          logit(  text    => "Damaged: $line",
+                  message => "Damaged file found on check for disk $disk - Check log",
+                  level   => 4,
+          );
+          
+          if ( !$opt{checkAutoFix} ) {
+            # Add snapraid repair command to check log
+            $filesDamaged .= "Run: snapraid -f '$line' fix - To correct";
+            # Logit @ Lv4
+            logit(  text    => "Run: snapraid -f '$line' fix - To correct",
+                    message => '',
+                    level   => 4,
+            );
+          } 
+          else {          
+            # Call snapraid to fix - snap_fix sub needed! - Hum... How safe? - Maybe DANGEROUS option
+          }
+  
+        }
+        elsif ( $line =~ m/(?<megs>\d+?)\s+?MB\s+?processed/i ) {
+          logit(  text    => "Check completed: Disk: $disk - $+{megs} MB processed",
+                  message => "Check completed: Disk: $disk - $+{megs} MB processed",
+                  level   => 3,
+          );
+        } 
+        elsif ( $line =~ m/(?<errors>\d+?)\s+?errors/i ) {
+          if ( $+{errors} > 0 ) {
+            logit(  text    => "Warning: Check on disk $disk shows $+{errors} errors",
+                    message => "Warn: Check on disk $disk shows $+{errors} errors",
+                    level   => 2,
+                  );
+          }
+        }
+        elsif ( $line =~ m/(?<unrerrors>\d+?)\s+?unrecoverable/i ) {
+          if ( $+{unrerrors} > 0 ) {
+          logit(  text    => "Critical: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
+                  message => "Crit: Check on disk $disk shows $+{unrerrors} unrecoverable errors",
+                  level   => 1,
+                );
+          }
+        }
+      }
+      
+      # Damaged files found so lets log them
+      if ( $filesDamaged ) {
+        # Writeout check log if need (Writes files names found damaged)
+        my $checkLogFile = $opt{logFileLocation} . $slashType . "snapraidCheck-$disk.log";
+        # Write file 
+        my $fileWritten = write_file( filename  => $checkLogFile,
+                                      contents  => \$filesDamaged,
+                                    );
+        # Logit if file did not write out
+        if ( !$fileWritten ) {
+          logit(  text    => "Warning: Unable to write check log - Please check $opt{logFileLocation} is writable", 
+                  message => 'Warn: Unable to write check log',
+                  level   => 2,
+                );
+        }
+        else {
+          logit(  text    => "Warning: Damaged files checking $disk - Please check log: $checkLogFile", 
+                  message => "Warn: Damaged files checking $disk - Please check log: $checkLogFile",
+                  level   => 2,
+                );      
+        }
+      }
+    }
+    else {
+      # Logit
+      logit(  text    => "Check disk: $disk - Fail Percentage: $disksToProcess->{$disk}% - Checked within $opt{checkMinTimeBetweenChecks} days", 
+              message => "Check disk: $disk - No check done min time not elapsed",
+              level   => 3,
+           );
+    }
+    # Change fp to time for storage in json file
+    $disksToProcess->{$disk} = $timeNow;
+  }
+  
+  # Save json and end warning if failed to save
+  if ( !save_json( $jsonCheckFile, $disksToProcess ) ) {
+    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Warn: Unable to write to json dir',
+            level   => 2,
+          );
+  }
+  
   return;
 }
 
@@ -643,22 +942,44 @@ sub snap_spindown {
 
 ##
 # sub snap_pool
-# Creat pool if valid config option exists
+# Create pool if valid config option exists
 # usage snap_pool();
 # return void
 sub snap_pool {
 
-  # Check for pool entry in snapraid config
-  if ( $conf{pool} ) {
+  # Check for pool entry in snapraid config and it exists
+  if ( $conf{pool} and -d $conf{pool} ) {
 
     # Run snapraid pool command
     my ( $output, $exitCode ) = snap_run( opt => '', cmd => 'pool' );
 
     # Get number of links created
-    my ( $links ) = $output =~ m/(\d+)\s+links/;
-    logit(  text    => "Pool command run and $links links created in $conf{pool}", 
-            message => "Pool run and $links links created",
-            level   => 3,
+    my ( $links ) = $output =~ m/(\d+?)\s+?links/i;
+    if ( $links ) {
+      logit(  text    => "Pool command run and $links links created in $conf{pool}", 
+              message => "Pool run and $links links created",
+              level   => 3,
+            );
+    }
+    else {
+      logit(  text    => "Warning: Pool command failed for location $conf{pool}", 
+              message => "Warn: Pool command failed",
+              level   => 2,
+            );    
+    }
+  }
+  # Not a valid directory?
+  elsif ( not -d $conf{pool} ) {
+    logit(  text    => "Warning: Unable to pool location if config file not a valid directory - Value: $conf{pool}", 
+            message => "Warn: Pool setting in conf file not valid",
+            level   => 2,
+          );
+  }
+  # No value for pool parsed from snapraid.conf 
+  else {
+    logit(  text    => 'Warning: Pool option set but no entry in snapraid conf file', 
+            message => 'Warn: No pool location in snapraid conf',
+            level   => 2,
           );
   }
   return;
@@ -667,18 +988,21 @@ sub snap_pool {
 ##
 # sub snap_run
 # Run a snapraid command
-# usage snap_run( opt => 'options', cmd => 'command', stderr => '0|1' );
-# returns stdout, exitcode, *opt stderr
+# usage snap_run( opt => 'options', cmd => 'command', snaplog => 0|1, stderr => 0|1 );
+# returns stdout, exitcode, *opt snaplog, *opt stderr (Will return all four but opt will be undef if not called for)
 sub snap_run {
 
   # Get passed args
   my %cmdArgs    = @_;
-  my $stderrFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stderr.tmp';
-  my $stdoutFile = $opt{snapRaidTmpLocation} . $slashType . 'snapPERLcmd-stdout.tmp';
+  
+  # Define file names - sndout/stderr/log are all saved for each command between runs - Any issues lots of logs to check back on
+  my $snapLogFile = $opt{logFileLocation}     . $slashType . "snapraid-$cmdArgs{cmd}.log";
+  my $stderrFile  = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stderr.tmp";
+  my $stdoutFile  = $opt{snapRaidTmpLocation} . $slashType . "snapraid-$cmdArgs{cmd}-stdout.tmp";
 
   # Build command
-  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
-  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -v $cmdArgs{opt} $cmdArgs{cmd}";
+  my $snapCmd     = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapLogFile -v $cmdArgs{opt} $cmdArgs{cmd} 1\>$stdoutFile 2\>$stderrFile";
+  my $snapCmdLog  = "$opt{snapRaidBin} -c $opt{snapRaidConf} -l $snapLogFile -v $cmdArgs{opt} $cmdArgs{cmd}";
 
   # Log command to be run
   logit(  text    => "Running: $snapCmdLog",
@@ -698,78 +1022,50 @@ sub snap_run {
     $exitCode = system($snapCmd);
   }
 
-  # Slurp in stndout/stderr from last call
-  my $cmdStderr = slurp_file($stderrFile);
-  my $cmdStdout = slurp_file($stdoutFile);
+  # Slurp in stndout/stderr/log from last call
+  my $cmdStdout   = slurp_file($stdoutFile);
+  # Slurp in only if requested by caller;
+  my $cmdLogData;
+  if ( $cmdArgs{snaplog} ) { $cmdLogData = slurp_file($snapLogFile); }
+  # Slurp in only if requested by caller;
+  my $cmdStderr;
+  if ( $cmdArgs{stderr} ) { $cmdStderr = slurp_file($stderrFile); }
   
-  if ( defined $cmdStderr ) {
-
-    # Get file size of stderr file
-    my @stderrStat = stat $stderrFile;
-
-    # stderr file is NOT empty indicating snapraid wrote to stderr
-    if ( $stderrStat[7] > 0 ) {
-
-      # Write it to log
-      my $logOutFile = $opt{logFileLocation} . $slashType . 'Stnderr' . $cmdArgs{cmd} . '.log';
-      my $fileWritten = write_file( filename  => $logOutFile,
-                                    contents  => \$cmdStderr,
-                                    UTF8      => 0,
-                                   );
-
-      if ( !$fileWritten ) {
-        logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable", 
-                message => "Warn: Unable to write log Stderr",
-                level   => 2,
-              );
-      }
-      
-      # Abort script and request user to investigate if critical call
-      if ( $cmdArgs{cmd} =~ /sync|scrub|status|diff/ ) {
-        logit(  text    => "Critical: stderr file size: $stderrStat[7] -- Exit code: $exitCode", 
-                message => "Crit: Snapraid error -- Exit code: $exitCode",
-                level   => 1,
-            );
-        logit(  text    => "Abort: Snapraid $cmdArgs{cmd} reports errors. Please check snapraid stderr file:- $stderrFile",
-                message => 'Abort: Snapraid $cmdArgs{cmd} reports errors',
-                level   => 2,
-                abort   => 1,
-          ); 
-      } 
-      else { 
-        # Logit for investigation
-        logit(  text    => "Warning: Snapraid issues with cmd: $cmdArgs{cmd} - Please see log: $logOutFile",
-                message => "Warn: Check log: $logOutFile",
-                level   => 2,
-              );
-      }
-    }
-  }
-  else {
-    logit(  text    => "Warning: unable to read stderr file: $stderrFile - Please check $opt{snapRaidTmpLocation} is writable",
-            message => 'Warn: unable to read stderr file',
-            level   => 2,
-          );
-  }
-
-  if ( defined $cmdStdout ) {
-    #Pass stdout / exitcode back to caller
-    if ( $cmdArgs{stderr} ) {
-      return ( $cmdStdout, $exitCode, $cmdStderr );
-    }
-    else {
-      return ( $cmdStdout, $exitCode );
-    }
-  }
-  else {
+  # Check we have the information needed to proceed
+  if ( not defined $cmdStdout and $cmdArgs{stderr} ) {
     logit(  text    => "Abort: Unable to read stndout file:- $stdoutFile - Please check $opt{snapRaidTmpLocation} is writable",
             message => 'Abort: Unable to read stndout file',
             level   => 2,
             abort   => 1,
           );
   }
+  elsif ( not defined $cmdLogData  and $cmdArgs{snaplog} ) {
+    logit(  text    => "Abort: Unable to read log file:- $snapLogFile - Please check $opt{logFileLocation} is writable",
+            message => 'Abort: Unable to read log file',
+            level   => 2,
+            abort   => 1,
+          );
+  }
+  
+  
+  # Get file size of stderr file
+  my @stderrStat = stat $stderrFile;
 
-  return;
+  # stderr file is NOT empty indicating snapraid wrote to stderr
+  if ( $stderrStat[7] > 0 and $cmdArgs{snaplog} ) {
+    # Snaprard wrote to stderr. Add this to log for further investigation
+    # I did abort here but found out snapraid writes to stderr for none fatal warnings
+    # Can not trust that Exit Code:0 only means OK so pass back to caller for some checking
+    $cmdLogData .= "msg:status:snderr:size:$stderrStat[7]";
+  }
+  else {
+    # stnderr empty :P
+    $cmdLogData .= 'msg:status:snderr:size:0';
+  }
+
+  # Pass stdout / exitcode / log / stderr back to caller
+  return ( $cmdStdout, $exitCode, $cmdLogData, $cmdStderr );
+
 }
 
 ##
@@ -800,18 +1096,48 @@ sub parse_conf {
       $key    =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
       $value  =~ s/^\s+|\s+$//g;      # Remove leading and trailing whitespace
 
-      # Process extra parity
-      if ( $key =~ m/\d-parity/ ) { $conf{xparity}->[ $#{ $conf{xparity} } + 1 ] = $value; }
+      # Process parity - Snapraid v11.0 added multi parity files per parity level. Modified to collect these! (\A forces an anchor and strips main parity entry)
+      if ( $key =~ m/\Aparity/i ) { 
+        my @parityFiles = split(/\,/, $value );
+        foreach my $parityFile ( @parityFiles ) {
+          $parityFile =~ s/^\s+|\s+$//g; 
+          $conf{$key}[ $#{ $conf{$key} } + 1 ] = $parityFile;
+        }
+        next;
+      }
+      
+      # Process extra parity - Snapraid v11.0 added multi parity files per parity level. Modified to collect these!
+      if ( $key =~ m/.+?parity/i ) { 
+        my @parityFiles = split(/\,/, $value );
+        foreach my $parityFile ( @parityFiles ) {
+          $parityFile =~ s/^\s+|\s+$//g; 
+          $conf{xparity}->{$key}[ $#{ $conf{xparity}{$key} } + 1 ] = $parityFile;
+        }
+        next;
+      }
 
       # Process other options and add to hash-array
-      elsif ( $key =~ m/content|exclude|share|smartctl/ ) { $conf{$key}->[ $#{ $conf{$key} } + 1 ] = $value; }
+      elsif ( $key =~ m/content|exclude|share/i ) { 
+        $conf{$key}->[ $#{ $conf{$key} } + 1 ] = $value; 
+        next;
+      }
 
       # Process data disks
-      elsif ( $key =~ m/disk|data/ ) {
+      elsif ( $key =~ m/disk|data/i ) {
         my ( $drive, $path ) = split(/\s/, $value, 2);
-        $drive  =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
-        $path   =~ s/^\s+|\s+$//g;    # Remove leading and trailing whitespace
-        $conf{$key}->{$drive} = $path;
+        $drive  =~ s/^\s+|\s+$//g;
+        $path   =~ s/^\s+|\s+$//g;
+        $conf{data}->{$drive} = $path;
+        next;
+      }
+
+      # Process smart options
+      elsif ( $key =~ m/smartctl/i ) {
+        my ( $drive, $smartCmd ) = split(/\s/, $value, 2);
+        $drive      =~ s/^\s+|\s+$//g;
+        $smartCmd   =~ s/^\s+|\s+$//g;
+        $conf{$key}->{$drive} = $smartCmd;
+        next;
       }
 
       # Values left are singular. Add to hash
@@ -830,29 +1156,108 @@ sub parse_conf {
   
   # Location of json conf file
   my $jsonConfFile = $opt{jsonFileLocation} . $slashType .  'confout.json'; 
- 
-  # Load json conf from last run 
-  #my $preConf = slurp_file($jsonConfFile);
- 
-  # Encode current snapraid conf to json
-  my $confOut     = encode_json \%conf;
-  
-  # Conf file changed? # Todo: Check conf file to last run - Needs more work on comp_hash
-  #if ( comp_hash(\%confOut, \%preConf) {
-  #  logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
-  #          message => 'Warn: Snapraid conf file changed!',
-  #          level   => 2,
-  #        );
-  #}
 
-  # Write out json for config
-  my $fileWritten = write_file( filename  => $jsonConfFile,
-                                contents  => \$confOut,
-                               );
-  if ( !$fileWritten ) {
-    logit(  text    => "Info: Unable to write to: $opt{jsonFileLocation}",
-            message => 'Info: Unable to write to json dir',
-            level   => 3,
+  # Load json as a data reference
+  my $preConfRef = load_json($jsonConfFile);
+     
+  # Conf file changed? 
+  if ( !compare_data_structure(\%conf, $preConfRef) ) {
+    logit(  text    => "Warning: $opt{snapRaidConf} file changed since last run. If this is expected please ignore",
+            message => 'Warn: Snapraid conf file changed!',
+            level   => 2,
+          );
+  }
+ 
+  # Save json and end warning if failed to save
+  if ( !save_json( $jsonConfFile, \%conf ) ) {
+    logit(  text    => "Warning: Unable to write to: $opt{jsonFileLocation}",
+            message => 'Warn: Unable to write to json dir',
+            level   => 2,
+          );
+  }
+  
+  return;
+}
+
+##
+# sub check_conf
+# Check to values loaded from conf file for sanity. Abort if critical issue found
+# usage check_conf();
+# return void
+sub check_conf {
+
+  # Set to 1 to abort
+  my $invalidConf = 0;
+ 
+  # Check parity - Does not support checking extra files in v11.0. Don't know yet if snapraid creates these files before it uses them!
+  if ( not defined $conf{parity}[0] or not -e $conf{parity}[0] ) { 
+    # No parity file - Set flag to abort
+    $invalidConf = 1;
+    # Prevents undefined warning if not loaded from config!
+    my $parity = defined $conf{parity}[0] ? $conf{parity}[0] : 'Not loaded from config';
+    
+    logit(  text    => "Warning: Missing parity file: $parity",
+            message => "Warn: Missing parity file: $parity",
+            level   => 2,
+          );
+    logit(  text    => 'Warning: Parity not mounted or not built?',
+            message => 'Warn: Parity not mounted or not built?',
+            level   => 2,
+          );
+  }
+  
+  # Check all data locations exist
+  foreach my $confKey ( sort(keys %{ $conf{data} }) ) { 
+    if ( not -d $conf{data}->{$confKey} ) { 
+      # Missing data location - Set flag to abort
+      $invalidConf = 1;
+      logit(  text    => "Warning: Missing data drive: $conf{data}->{$confKey}",
+              message => "Warn: Missing data drive: $conf{data}->{$confKey}",
+              level   => 2,
+            );
+    }
+  }
+
+  # Check each content file listed exists
+  my $anyValidContent = 0;
+  for ( my $i = 0 ; $i <= $#{ $conf{content} } ; $i++ ) {
+    if ( not -e $conf{content}->[$i] ) { 
+      logit(  text    => "Warning: Missing content file: $conf{content}->[$i]",
+              message => "Warn: Missing content file: $conf{content}->[$i]",
+              level   => 2,
+            );
+    } 
+    else { 
+      # At least one valid content file exist. So we don't abort and let snapraid handle it
+      $anyValidContent = 1; 
+    } 
+  }
+  # No valid content file - Set flag to abort
+  if ( not $anyValidContent ) { $invalidConf = 1; }
+  
+  # Check each extra parity exists - Does not support checking extra files in v11.0. Don't know yet if snapraid creates these files before it uses them!
+  foreach my $xparity ( keys %{$conf{xparity}} ) {
+      if ( not defined $conf{xparity}->{$xparity} or not -e $conf{xparity}->{$xparity}[0] ) { 
+        # Missing extra parity file - Set flag to abort
+        $invalidConf = 1;
+        # Prevents undefined warning if not loaded from config!
+        my $parity = defined $conf{xparity}->{$xparity}[0] ? $conf{xparity}->{$xparity}[0] : 'Not loaded from config';
+        logit(  text    => "Warning: Missing parity file: $conf{xparity}->{$xparity}[0]",
+                message => "Warn: Missing parity file: $conf{xparity}->{$xparity}[0]",
+                level   => 2,
+              );
+        logit(  text    => 'Warning: Parity not mounted or not built?',
+                message => 'Warn: Parity not mounted or not built?',
+                level   => 2,
+              );
+      }
+  }
+  
+  if ( $invalidConf ) {
+    logit(  text    => 'Critical: Invalid snapraid conf file - Aborting',
+            message => 'Crit: Invalid snapraid conf - Abort',
+            level   => 1,
+            abort   => 1,
           );
   }
   
@@ -866,6 +1271,10 @@ sub parse_conf {
 # return void
 sub get_opt_hash {
 
+  # Hold value of lowest LogLevel reached
+  $opt{minLogLevel} = 5;
+  
+  # Options hash
   my $options;
 
   # Slurp the options file :P
@@ -877,7 +1286,7 @@ sub get_opt_hash {
     # Ignore lines without options in them
     if ( $optin =~ m/=/ ) {
 
-      # Lexicals
+      # Lexical s
       my ( $key, $value, $comment, $valueC );
 
       # Split keys
@@ -904,10 +1313,24 @@ sub get_opt_hash {
     }
   }
   
+  # Call to validate loaded conf file
+  my $valid = validate_conf();
+  
+  # Invalid conf file?
+  if ( not $valid ) {
+    # Don't use logit(); Missing values in conf file. Abort
+    say 'Abort: Loaded conf file not valid - Please check your file against snapPERL.conf.example';
+    say 'This can happen when upgrading to a new versions with changed or added options';
+    say 'See list of missing options given by script';
+    # Exit
+    exit(1);
+  }
+  
   # Get hostname
   $opt{hostname} = qx{hostname};
   # Remove vertical whitespace from hostname (Email issue)
-  chop $opt{hostname};
+  $opt{hostname} = uc($opt{hostname});
+  chomp($opt{hostname});
     
   # If not defined in config file (Normal situation)
   if ( !$opt{snapRaidTmpLocation} ) { $opt{snapRaidTmpLocation} = $scriptPath . 'tmp'; }
@@ -918,9 +1341,14 @@ sub get_opt_hash {
   # Define location for script json files (Files that hold information about previous runs)
   $opt{jsonFileLocation} = $scriptPath . 'json';
   
-  # Hold value of lowest LogLevel reached
-  $opt{minLogLevel} = 5;
-  
+  # Set options to command line overrides - If not sent on command line then they use values from conf
+  foreach my $option (keys %argv) {
+    # Value taken from command line
+    if ( defined $argv{$option} ) {
+      # Replace value read from conf file in %opt hash
+      $opt{$option} = $argv{$option};
+    }
+  }
   return;
 }
 
@@ -935,12 +1363,11 @@ sub script_comp {
   if ( $opt{emailSend} ) { email_send(); }
 
   # Write log to location in $opt{logFile}
-  if ( $opt{logFile} ) { 
+  if ( $opt{logFile} and $scriptLog ) { 
     my $logOutFile = $opt{logFileLocation} . $slashType . $opt{logFile};
     my $fileWritten = write_file( filename  => $logOutFile,
                                   contents  => \$scriptLog,
-                                  UTF8      => 0,
-                                 );
+                                );
     
     if ( !$fileWritten ) {
       logit(  text    => "Warning: Unable to write log - Please check $opt{logFileLocation} is writable",
@@ -983,12 +1410,11 @@ sub script_comp {
 # sub email_send
 # Send the scriptLog out via email;
 # usage email_send();
-# return void
+# return 0 if unable load modules else undef
 sub email_send {
-
-  my $subjectAlert;
-
+  
   # Add alert to subject line if warnings or errors encountered.
+  my $subjectAlert;
   if ( $opt{minLogLevel} < 3 ) {
     $subjectAlert = $opt{minLogLevel} < 2 ? 'Critical' : 'Warning';
   }
@@ -996,72 +1422,164 @@ sub email_send {
     $subjectAlert = '';
   }
 
-  # Use gmail SMTP to send the email.. System I use.
-  if ( $opt{useGmail} ) {
+  # Use email.
+  if ( $opt{emailSend} ) {
 
-    # Load on demand need modules for Gmail send
-    autoload Email::Send;
-    autoload Email::Send::Gmail;
-    autoload Email::Simple::Creator;
-
-    # Create gmail email
-    my $email = Email::Simple->create(
-      header => [
-        From    => $opt{emailSendAddress},
-        To      => $opt{emailAddress},
-        Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
-      ],
-      body => $scriptLog,
-    );
-
-    # Account details for gmail
-    my $sender = Email::Send->new(
-      {
-        mailer      => 'Gmail',
-        mailer_args => [
-          username => $opt{emailAddress},
-          password => $opt{gmailPass},
-        ]
-      }
-    );
-
-    # Send using gmail SMTP
-    eval { $sender->send($email) };
-    if ($@) { 
-      logit(  text    => "Warning: Gmail SMTP email send failed... $@",
-              message => 'Warn: Gmail SMTP email send failed...',
+    # Load on demand need modules for email sending
+    my $loadFail;
+    eval { autoload Email::Send };            if ($@) { $loadFail += 'Email::Send '; }
+    eval { autoload Email::Simple::Creator }; if ($@) { $loadFail += 'Email::Simple::Creator '; }
+    
+    # Modules did not load
+    if ( $loadFail ) {
+      logit(  text    => "Warning: Failed to load modules for Email: $loadFail",
+              message => 'Warn: Failed to load modules for Email',
               level   => 2,
             );
+      # Return to caller with false boolean
+      return 0;
     }
 
-  }
-  else {
-
-    # Load on demand needed modules for Email send
-    autoload MIME::Lite;
-
-    # Send email via localy configured sendmail server.
-    my $msg = MIME::Lite->new(
-      From    => $opt{emailSendAddress},
-      To      => $opt{emailAddress},
-      Subject => "\[$opt{hostname}\] - snapPERL Log. Please see message body",
-      Data    => $scriptLog,
-    );
-
-    # Send.
+    if ( $opt{emailUseSendmail} ) {
+      # Create mail object
+      my $sender = Email::Send->new();
+      # Is sendmail avalible?
+      if ( $sender->mailer_available('Sendmail') ) {
+        # Set mailer
+        $sender->mailer('Sendmail');
+        # Create the email!
+        my $email = Email::Simple->create(
+          header => [
+                      From  => $opt{emailFromAddress}, 
+                      To    => $opt{emailToAddress}, 
+                      Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
+                    ],
+          body => $scriptLog,
+        );
+        # Send email
+        my $return = eval { $sender->send($email) };
+        if ($@) { 
+        logit(  text    => "Warning: Sendmail send failed:-  $@",
+                message => 'Warn: Sendmail send failed',
+                level   => 2,
+              );
+        }
+        elsif ( $return !~ m/Message\ssent/i or $return != 1 ) {
+          logit(  text    => "Warning: Sendmail send failed: $return",
+                  message => 'Warn: Sendmail send failed',
+                  level   => 2,
+                );
+        }
+      }
+      else {
+        logit(  text    => 'Warning: Email::Send::Sendmail not found. Please install Cpan module Email::Send::Sendmail',
+                message => 'Warn: Email::Send::Sendmail not found',
+                level   => 2,
+              );        
+      }
+    }
+    
+    if ( $opt{emailUseGmail} ) {
+      # Create mail object
+      my $sender = Email::Send->new();
+      # Is sendmail avalible?
+      if ( $sender->mailer_available('Gmail') ) {
+        # Set mailer
+        $sender->mailer('Gmail');
+        # Set args
+        $sender->mailer_args(
+          [
+            username => $opt{emailGmailUser},
+            password => $opt{emailGmailPass},
+          ]
+        );
+        # Create the email!    
+        my $email = Email::Simple->create(
+          header => [
+                      From  => $opt{emailGmailUser}, 
+                      To    => $opt{emailGmailToAddress}, 
+                      Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
+                    ],
+          body => $scriptLog,
+        );
+        # Send email
+        my $return = eval { $sender->send($email) };
+        if ($@) { 
+        logit(  text    => "Warning: Gmail send failed:  $@",
+                message => 'Warn: Gmail send failed',
+                level   => 2,
+              );
+        }
+        elsif ( $return != 1 ) {
+          logit(  text    => "Warning: Gmail send failed: $return",
+                  message => 'Warn: Gmail send failed',
+                  level   => 2,
+                );
+        }
+      }
+      else {
+        logit(  text    => 'Warning: Email::Send::Gmail not found. Please install Cpan module Email::Send::Gmail',
+                message => 'Warn: Email::Send::Gmail not found',
+                level   => 2,
+              );        
+      }
+    }
+    
     if ( $opt{emailUseSmtp} ) {
-      $msg->send( 'smtp', $opt{emailSmtpAddress}, Timeout => 60 );
-    }
-    else {
-      $msg->send;
+      # Create mail object
+      my $sender = Email::Send->new();
+      # Is sendmail avalible?
+      if ( $sender->mailer_available('SMTP') ) {
+        # Set mailer
+        $sender->mailer('SMTP');
+        # Set args
+        $sender->mailer_args(
+          [
+            Host      => $opt{emailSmtpAddress},
+            Port      => $opt{emailSmtpPort},
+            username  => $opt{emailSmtpUser},
+            password  => $opt{emailSmtpPass},
+            ssl       => $opt{emailSmtpSSL},
+          ]
+        );
+        # Create the email!    
+        my $email = Email::Simple->create(
+          header => [
+                      From  => $opt{emailSmtpFromAddress}, 
+                      To    => $opt{emailSmtpToAddress}, 
+                      Subject => "$subjectAlert \[$opt{hostname}\] - snapPERL Log. Please see message body",
+                    ],
+          body => $scriptLog,
+        );
+        # Send email
+        my $return = eval { $sender->send($email) };
+        if ($@) { 
+        logit(  text    => "Warning: SMTP send failed:-  $@",
+                message => 'Warn: SMTP send failed',
+                level   => 2,
+              );
+        }
+        elsif ( $return !~ m/Message\ssent/i or $return != 1 ) {
+          logit(  text    => "Warning: SMTP send failed: $return",
+                  message => 'Warn: SMTP send failed',
+                  level   => 2,
+                );
+        }
+      }
+      else {
+        logit(  text    => 'Warning: Email::Send::SMTP not found. Please install Cpan module Email::Send::SMTP',
+                message => 'Warn: Email::Send::SMTP not found',
+                level   => 2,
+              );        
+      }
     }
   }
   return;
 }
 
 ##
-# sub send_message();
-# Sends message to various messaging API's 
+# sub send_message_po();
+# Sends message to Pushover API 
 # usage send_message( %options_hash );
 # return void
 sub send_message_po {
@@ -1086,8 +1604,19 @@ sub send_message_po {
   # Priority must be between -2 and 2
   if ( !defined $optHash{poPriority} || $optHash{poPriority} > 2 || $optHash{poPriority} < -2 ) { $optHash{poPriority} = 0; }
 
-  # Priority 2 can only be used with device name
-  if ( !defined $optHash{poDevice} && $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
+  # Priority 2 can only be used with expire and retry
+  if ( (not defined $optHash{expire} or not defined $optHash{retry}) and $optHash{poPriority} == 2) { $optHash{poPriority} = 1; }
+
+  # Make sure expire setting is no less then 30 or more than 86400 seconds
+  if ( defined $optHash{expire} ) { 
+    $optHash{expire} = $optHash{expire} < 30 ? 30 : $optHash{expire}; 
+    $optHash{expire} = $optHash{expire} < 86400 ? 86400 : $optHash{expire};
+  }
+  
+  # Make sure expire setting is no less then 30 seconds
+  if ( defined $optHash{expire} ) { 
+    $optHash{retry} = $optHash{retry} < 30 ? 30 : $optHash{retry}; 
+  }
 
   # Get LWP Agent
   my $userAgent = LWP::UserAgent->new;
@@ -1131,29 +1660,38 @@ sub send_message_po {
 # return void
 sub load_custom_cmds {
 
-  my $customCmdsIn;
-
-  # Slurp the custom commands file :P
-  $customCmdsIn = slurp_file($customCmdsFile);
-
-  foreach my $line ( split(/\n/, $customCmdsIn) ) {
-
-    # Remove any leading whitespace
-    $line =~ s/^\s+//g;
-
-    #Ignore comments and empty lines
-    if ( $line !~ m/^#/ && $line =~ m/=/ ) {
-
-      #Split on '='
-      my ( $type, $cmd ) = split(/=/, $line);
-
-      # Ignore lines without pre or post commands
-      if ( $type =~ m/pre|post/ ) {
-
-        # Add to Hash/Array
-        $customCmds{$type}->[ $#{ $customCmds{$type} } + 1 ] = $cmd;
+  # File exists?
+  if ( -e $customCmdsFile ) {
+    my $customCmdsIn;
+  
+    # Slurp the custom commands file :P
+    $customCmdsIn = slurp_file($customCmdsFile);
+  
+    foreach my $line ( split(/\n/, $customCmdsIn) ) {
+  
+      # Remove any leading whitespace
+      $line =~ s/^\s+//g;
+  
+      #Ignore comments and empty lines
+      if ( $line !~ m/^#/ && $line =~ m/=/ ) {
+  
+        #Split on '='
+        my ( $type, $cmd ) = split(/=/, $line);
+  
+        # Ignore lines without pre or post commands
+        if ( $type =~ m/pre|post/ ) {
+  
+          # Add to Hash/Array
+          $customCmds{$type}->[ $#{ $customCmds{$type} } + 1 ] = $cmd;
+        }
       }
     }
+  }
+  else {
+    logit(  text    => "Warning: Custom Commands file: $customCmdsFile not found",
+            message => 'Warn: custom-cmds file not found',
+            level   => 2,
+          );
   }
   return 1;
 }
@@ -1184,7 +1722,17 @@ sub custom_cmds {
     for ( my $i = 0 ; $i <= $#{ $customCmds{$type} } ; $i++ ) {
 
       # Run command
-      system( $customCmds{$type}->[$i] );
+      logit(  text    => "Running custom $type command: $customCmds{$type}->[$i]",
+              message => '',
+              level   => 3,
+            );
+      eval { system( $customCmds{$type}->[$i] ) };
+      if ($@) { 
+      logit(  text    => "Warning: Custom-cmd: $customCmds{$type}->[$i] failed... $@",
+              message => 'Warn: Custom-cmd: $customCmds{$type}->[$i] failed',
+              level   => 2,
+            );
+      }
     }
   }
   return 1;
@@ -1206,7 +1754,7 @@ sub slurp_file {
   # File exists?
   if ( -e $file ) {
     if ( open my $fh, '<:encoding(UTF-8)', $file ) {
-      local $/ = undef;       # Don't clobber global version. Normaly holds 'newline' and reads one line at a time
+      local $/ = undef;       # Don't clobber global version. Normally holds 'newline' and reads one line at a time
       $slushPuppie = <$fh>;   # My favorite slurp
       close $fh;              # Will auto close once once out of scope regardless
     }
@@ -1233,7 +1781,7 @@ sub slurp_file {
 # sub time_stamp();
 # Create a timestamp for the log.
 # usage $stamp = time_stamp();
-# returns formated timestamp
+# returns formatted timestamp
 sub time_stamp {
 
   # Define month names
@@ -1248,8 +1796,8 @@ sub time_stamp {
   # Convert to full 4 digit year
   my $fullYear = $year + 1900;
 
-  # Return formated timestamp
-  return sprintf( "%02d:%02d:%02d - %s %d %s %d", $hour, $min, $sec, $days[$wday], $mday, $months[$mon], $fullYear );
+  # Return formatted timestamp
+  return sprintf( "%02d:%02d:%02d %d %s %d", $hour, $min, $sec, $mday, $months[$mon], $fullYear );
 
 }
 
@@ -1267,14 +1815,14 @@ sub logit {
   # Get hash
   my %logIn = @_;
   
-  # Check incomming hash
+  # Check incoming hash
   if ( not $logIn{level} or $logIn{level} < 0 or $logIn{level} > 5 ) { $logIn{level} = 3; }
   if ( not $logIn{text} and not $logIn{message} ) { 
     $logIn{text} = 'DEBUG: No message sent to logit'; 
     $logIn{level} = 5;
   }
 
-  # Varible holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
+  # Variable holds lowest log level reached. 1 for Critical, 2 for Warning and 3 for Normal
   $opt{minLogLevel} = $logIn{level} < $opt{minLogLevel} ? $logIn{level} : $opt{minLogLevel};
   
   # (1=Critical, 2=Warning, 3=Info, 4=All, 5=Debug)
@@ -1305,13 +1853,22 @@ sub logit {
   }
   
   if ( $logIn{abort} ) {
-    
+ 
+    # Log before killing script (Recursive call) - Already aborting so abort tag not needed and would create an infinite loop
+    logit(  text    => 'Fatal issue encountered. Please see logs',
+            message => 'Fatal issue encountered. Please see logs',
+            level   => 3,
+            abort   => 0, # Never change to 1 (Infinite Loop)
+          ); 
+   
     # Cleanup
     script_comp();
-
-    # Kill script
-    croak "Fatal issue encountered. Please see logs";
     
+    # Add debug information to log
+    if ( $opt{logLevel} >= 5 ) { debug_log(); }
+
+    # Kill script - Return 1 indicating fatal exit
+    exit(1);
   }
   
   return;
@@ -1344,95 +1901,223 @@ sub write_file {
   } 
 }
 
-#Not finished and not used yet
-sub comp_hash {
+##
+# sub save_json();
+# Encode and write json data to file
+# usage load_json( filename, \%@data );
+# returns 1 if success and 0 if not
+sub save_json {
   
-  my ($hashRef1, $hashRef2) = @_;
-  my $hashMatch = 1;
-  my @diffs;
+  # Get incomming data
+  my $jsonFileName  = shift;
+  my $dataRef       = shift;
+  
+  # Json object
+  my $json = JSON::PP->new;
+  $json = $json->canonical(1);
+  
+  # Encode incomming data to json
+  my $jsonOut = $json->encode($dataRef);
 
-  foreach my $key ( keys %{$hashRef1} ) {
-    unless ( exists ${$hashRef2}{$key} ) {
-      push @diffs, "Hash1 Key \'$key\' missing in hash2";
-      $hashMatch = 0;
-      next;
-    }
+  # Write out to json directory
+  my $fileWritten = write_file( filename  => $jsonFileName,
+                                contents  => \$jsonOut,
+                               );
+  # File written OK?
+  if ( !$fileWritten ) {
+    # Return fail
+    return 0;
+  }
+  else {
+    # Success return 1
+    return 1;
+  }
+  return;
+}
 
-    if ( ${$hashRef1}{$key} ne ${$hashRef2}{$key} ) {
-      push @diffs, "Values for Hash1 don't match Hash2";
-      $hashMatch = 1;
+##
+# sub load_json();
+# Read json data from file and decode
+# usage load_json( filename );
+# returns json data ref if success and undef if not
+sub load_json {
+  
+  # Get json file name
+  my $jsonFileName = shift;
+   
+  # Create Json object
+  my $json = JSON::PP->new;
+  $json = $json->canonical(1);
+ 
+  # Load json file 
+  my $jsonIn = slurp_file($jsonFileName);
+ 
+  # Decode and return json
+  if ( $jsonIn ) {
+    # Decode json
+    my $jsonRef = $json->decode($jsonIn);
+    # Return ref to json data
+    return $jsonRef;      
+  }
+  else {
+    # Invalid then return undef;
+    return;
+  }   
+  return;
+}
+
+##
+# sub comp_data_structure();
+# Compare two data structures you expect to be identical
+# Recursive self calling. Will follow down no mater how many levels or types
+# usage comp_data_structure( \%|@refData1, \%|@refData2 );
+# returns 1 if data structures match perfect and 0 if not
+sub compare_data_structure {
+  
+  my ($dataRef1, $dataRef2) = @_;
+  
+  # Sent hash refs?
+  if ( ref $dataRef1 eq 'HASH' and ref $dataRef2 eq 'HASH' ) {
+    foreach my $key ( keys %{$dataRef1} ) {
+      #Check keys
+      if ( not exists $dataRef2->{$key} ) {
+        # Return false
+        return 0;
+      }
+      # Check values
+      if ( $dataRef1->{$key} ne $dataRef2->{$key} ) {
+        if ( (ref $dataRef1->{$key} eq 'HASH' and ref $dataRef2->{$key} eq 'HASH') or (ref $dataRef1->{$key} eq 'ARRAY' and ref $dataRef2->{$key} eq 'ARRAY') ) {
+          # Recursive call on self 
+          if ( !compare_data_structure($dataRef1->{$key}, $dataRef2->{$key}) ) { return 0; }
+        }
+        else { 
+          # Return false
+          return 0;
+        }
+      }
     }
   }
-  return wantarray ? @diffs : $hashMatch; 
+  # Sent Array refs?
+  elsif ( ref $dataRef1 eq 'ARRAY' and ref $dataRef2 eq 'ARRAY' ) {
+    for ( my $i = 0; $i <= $#{ $dataRef1 }; $i++ ) {
+      if ( $dataRef1->[$i] ne $dataRef2->[$i] ) {
+        if ( (ref $dataRef1->[$i] eq 'HASH' and ref $dataRef2->[$i] eq 'HASH') or (ref $dataRef1->[$i] eq 'ARRAY' and ref $dataRef2->[$i] eq 'ARRAY') ) {
+          # Recursive call on self
+          if ( !compare_data_structure($dataRef1->[$i], $dataRef2->[$i]) ) { return 0; }
+        }
+        else { 
+          # Return false
+          return 0;
+        }
+      }
+    }
+  }
+  else {
+    # Sent mixed refs?
+    return 0;
+  }
+  # Gets here then it all matched! - Return true
+  return 1; 
 }
 
 ##
 # sub debug_log
 # Called if logLevel set to 5 (Debug).
-# Cycles over multi dimension hash created from config file.
+# Dumps the contents of the main scrip hashes
 # usage debug_log();
 # return void
 sub debug_log {
 
-  # May just use Data::Dumper for this
-
-  # Debug -> Log Options!
-  logit(  text    => '-------- Options --------',
-          message => '',
-          level   => 5,
-        );
-        
-  foreach ( sort( keys %opt ) ) {
-    logit(  text    => "Option :: $_ -> $opt{$_}",
-            message => '',
-            level   => 5,
-          );
-  }
-  
-  logit(  text    => '-------- Options End --------',
-          message => '',
-          level   => 5,
-        );
-
-  # Debug -> Log Config!
-  logit(  text    => '-------- Config --------',
-          message => '',
-          level   => 5,
-        );
-        
-  foreach my $confKey ( sort(keys %conf) ) {
-    if ( ref($conf{$confKey}) eq "HASH" ) {
-      foreach my $diskKey ( keys %{ $conf{$confKey} } ) {
-        logit(  text    => "Config : $confKey -> $diskKey -> $conf{$confKey}->{$diskKey}",
-                message => '',
-                level   => 5,
-          );
-      }
-    }
-    elsif ( ref($conf{$confKey}) eq "ARRAY" ) {
-      for ( my $i = 0 ; $i <= $#{ $conf{$confKey} } ; $i++ ) {
-        logit(  text    => "Config : $confKey -> $i -> $conf{$confKey}->[$i]",
-                message => '',
-                level   => 5,
-              );
-      }
-    }
-    else {
-      logit(  text    => "Config : $confKey -> $conf{$confKey}",
-              message => '',
-              level   => 5,
-          );
-    }
-  }
-  
-  logit(  text    => '-------- Config End--------',
-          message => '',
-          level   => 5,
-        );
+  # Dump contents of hashes to stdout 
+  say Data::Dumper->Dump( [ \%argv        ],  [ qw(*argv)       ] );
+  say Data::Dumper->Dump( [ \%opt         ],  [ qw(*opt)        ] );
+  say Data::Dumper->Dump( [ \%conf        ],  [ qw(*conf)       ] );
+  say Data::Dumper->Dump( [ \%customCmds  ],  [ qw(*customCmds) ] );
+  say Data::Dumper->Dump( [ \%diffHash    ],  [ qw(*diffHash)   ] );
 
   return;
 }
 
+##
+# Sub validate_conf
+# Called to validate conf file and check it contains all required options - Carps to sndout
+# Will add and change values here as I add and change in options snapPERL.conf.example
+# usage validate_conf();
+# return 1 if valid and 0 if not
+sub validate_conf {
+
+  # Conf is valid unless found to be otherwise
+  my $isValid = 1;
+  
+  # Anonymous hash containing values that should exisit in conf file
+  my $validate = { 
+    syncOptions       => [ qw( deletedFiles changedFiles )                                                                                                            ],
+    scrubOptions      => [ qw( scrubEnable scrubNewest scrubOldest scrubAge scrubPercentage useScrubNew scrubEnforceMinDays )                                         ],
+    smartOptions      => [ qw( smartLog smartWarn smartDiskWarn smartMaxDriveTemp smartDiskErrorsWarn)                                                                ],
+    checkOptions      => [ qw( checkSuspectDisks checkAuditOnly checkOnlyAfterIncrease checkDiskFailPercentage checkMinTimeBetweenChecks checkAutoFix)                ],
+    snapOptions       => [ qw( snapRaidBin snapRaidConf preHashOnSync resetTimeStamps spinDown pool)                                                                  ],
+    otherOptions      => [ qw( logFile messageLevel logStdout useCustomCmds noVersionWarnings )                                                                       ],
+    emailOptions      => [ qw( emailSend emailUseSendmail emailFromAddress emailToAddress )                                                                           ],
+    smtpOptions       => [ qw( emailUseSmtp emailSmtpFromAddress emailSmtpToAddress emailSmtpAddress emailSmtpPort emailSmtpSSL emailSmtpUser emailSmtpPass )         ],
+    gmailOptions      => [ qw( emailUseGmail emailGmailToAddress emailGmailUser emailGmailPass )                                                                      ],
+    pushoverOptions   => [ qw( pushOverSend pushOverKey pushOverToken pushOverUrl pushDefaultPriority pushWarningPriority pushCriticalPriority pushSound pushDevice ) ],
+    #nmaOptions        => [ qw( nmaSend ) ],
+    #pushbulletOptions => [ qw( pushBulletSend ) ],
+  }; 
+  
+  # Cycle though $validate and confirm all options listed loaded from conf file (Check conf updated with new options)
+  foreach my $optionGroup ( keys %{$validate} ) {
+    foreach my $option ( @{$validate->{$optionGroup}} ) {
+      # Check for missing option
+      if ( not exists $opt{$option} ) {
+        # Carp to stdout and set flag
+        say "snapPERL conf file missing option :: Group: $optionGroup -> Option: $option=";
+        $isValid = 0;
+      }
+    }
+  }
+  
+  return $isValid;
+}
+
+##
+# sub show_cmdline_help
+# Called to display help when called from command line
+# usage show_cmdline_help();
+# return exit(0)
+sub show_cmdline_help {
+
+  # Show Version
+  say "snapPERL v$VERSION by Steve Miles (2016) - snapperl.stevemiles.me.uk";
+  
+  # Show help
+  if ( $argv{help} ) {
+    # Build help
+    my $help = q(
+    snapPERL.pl [ -c  --conf CONFIG         { Full path to conf file        } ]
+                [ -x  --custom-cmds FILE    { Full path to custom-cmds file } ]
+                [ -m  --message-level 1-3   { Set message level             } ]
+                [ -l  --log-level 1-5       { Set log level                 } ]
+                [ --stdout    --nostdout    { Toggle log to stdout          } ]
+                [ --check     --nocheck     { Toggle check option enable    } ]
+                [ --scrub     --noscrub     { Toggle scrub option enable    } ]
+                [ --email     --noemail     { Toggle email send             } ]
+                [ --custom    --nocustom    { Toggle custom cmds            } ]
+                [ --pushover  --nopushover  { Toggle Pushover send          } ]
+                [ --smart     --nosmart     { Toggle smart logging          } ]
+                [ --pool      --nopool      { Toggle snapraid pool          } ]
+                [ --spindown  --nospindown  { Toggle spindown disks         } ]
+                [ -h  --Help                { This Help                     } ]
+                [ -v  --version             { Display Version               } ]
+    );
+    
+    # Display help
+    say $help;
+  }
+  
+  # Exit script - version and help cause end of script!
+  exit (0);
+}
 
 #-------- Subroutines End --------#
 
@@ -1440,4 +2125,3 @@ sub debug_log {
 1;
 
 __END__
-

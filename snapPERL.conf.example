@@ -3,77 +3,153 @@
 # All white space, empty lines, lines without an = in and lines starting with # are ignored when parsed
 # Nothing needs changing for script to run on normal snapraid install. Items marked with a * point to normal default location
 
-## Email Options (Optional)
+## Sync options (Defaults will work fine for most people)
+#  
+# If the amount of deleted / changed files exceeds these limits you sync will stop. Set them to your needs.
+# changedFiles added just in case you get ransomware that encrypts all your files. Stops the sync so you can recover. 
+# I only ever expose one drive to read/write and others read only.
 #
-emailSend=0                                                   #Send email?
-emailAddress=youremail@email.com                              #Email address
-emailSendAddress=youremail@email.com                          #Email address to show has being sent from
-emailUseSmtp=0                                                #Use none sendmail or external smtp if not using gmail 
-emailSmtpAddress=smtp.yourisp.com                             #SMTP address to use (Needed if emailUseSmtp set)
+deletedFiles=50                                               # Max amount of deleted files to auto sync
+changedFiles=500                                              # Max amount of changed files to auto sync
 
-## Gmail settings (Optional)
+## Scrub options (Defaults will work fine for most people)
 #
-useGmail=0                                                    #Use Gmail to send mail 
-gmailPass=yourgmailpass                                       #Gmail password to use... Recomend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
- 
-## Pushover Options (Optional)
+# Default setting will scrub new data after every sync. Then check age of oldest unscrubed block and if greater than scrubOldest.
+# it will run a scrub using scrubAge for the youngest block to scrub and scrubPercentage to determine how much of array is scrubed.
+# with useScrubNew=0 then scrub will be activated when newest unscrubed block gets older than scrubNewest.
+# scrubEnforceMinDays sets a minimum about of days between scrubs. (does not deactivate useScubNew)
 #
-pushOverSend=0                                                #Send pushover alerts? - Not currently active
-pushOverKey=##############################                    #Pushover user key
-pushOverToken=##############################                  #Pushover app token
-pushOverUrl=https://api.pushover.net/1/messages.json          #Pushover url to send messages
-pushDefaultPriority=-1                                        #Default priority to send messages (-1 = silent)
-pushWarningPriority=0                                         #Priority to send messages with warnings (0 = alert)
-pushCriticalPriority=1                                        #Priority to send messages with criticals (1 = alert that will sound even in quite mode)
-pushSound=pushover                                            #Sound to use for alerts (Default pushover)
-pushDevice=                                                   #Device to send messages to (empty = all)
+scrubEnable=1                                                 # If set to 0 will totaly disable scrub. Disable all scrub activity including useScrubNew
+scrubNewest=7                                                 # Age of newest un-scrubed block before scub is run (useScrubNew will overide)
+scrubOldest=30                                                # Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
+scrubAge=10                                                   # Data older than days
+scrubPercentage=8                                             # Percentage of array to scrub
+useScrubNew=1                                                 # Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
+scrubEnforceMinDays=0                                         # Overides all settings until time specifed in days elapses (Except useScrubNew - Turn off to scrub only at this interval)
 
-## Notify my Android options (Optional)
-#
-nmaSend=0                                                     #Send NMA alerts - Not currently active
-
-## Pushbullet options (Optional)
-#
-pushBulletSend=0                                              #Send pushbullet alerts - Not currently active
-  
-## Sync and Scrub options (Defaults will work fine for most people)
-#
-deletedFiles=50                                               #Max amount of deleted files to auto sync
-changedFiles=500                                              #Max amount of changed files to auto sync
-scrubDays=7                                                   #Number of days before scrub is run 
-scrubOldest=30                                                #Max oldest block before scrub is run if using 'new' plan on sync (v9.0 on)
-scrubAge=10                                                   #Data older than days
-scrubPercentage=8                                             #Percentage of array to scrub
-useScrubNew=1                                                 #Scrub new data from sync and verify. (Supported in versions 9.0+ of snapraid).
-resetTimeStamps=1                                             #Use touch command to reset sub-second time stamps (Snapraid 10.0+)
-  
 ## Smart options (Defaults will work fine for most people)
-## You must have smartmontools installed - sudo apt-get install smartmontools
+## You must have smartmontools installed on linux - ubuntu: sudo apt-get install smartmontools
+## Snapraid is packaged with smartctl.exe for windows
 #
-smartLog=0                                                    #Check and log Smart data. 
-smartWarn=70                                                  #Chance of fail percentage (whole array) to send warnings
-smartDiskWarn=50                                              #Chance of fail percentage (disk) to send warnings
-smartMaxDriveTemp=50                                          #Max temp before warnings issued
-smartDiskErrorsWarn=1                                         #Number of errors to send warning regarding disk (Normal setting is 1)
+# smartLog=1 calls snapraid smart and logs the output. The information the script sends to the log comes stright from snapraid.
+# Warning levels will be checked and warning sent when exceeded. - Do not enable if you use NFS data drives.
+#
+smartLog=0                                                    # Check and log Smart data. 
+smartWarn=70                                                  # Chance of fail percentage (whole array) to send warnings
+smartDiskWarn=50                                              # Chance of fail percentage (disk) to send warnings
+smartMaxDriveTemp=50                                          # Max temp before warnings issued
+smartDiskErrorsWarn=1                                         # Number of errors to send warning regarding disk (Normal setting is 1)
+
+## Check options (Defaults should work for most - Not enabled by default)
+#
+# Once a disk exceeds levels set a snapraid check will be run on it. See each option for more details.
+# checkAuditOnly enabled means that only the disk will be checked not it's corresponding parity.
+# Should be enougth to detect a failing disk. http://www.snapraid.it/manual
+# New in v0.3
+#
+checkSuspectDisks=0                                           # Enable snapraid check on disks with Fail Percentage > checkDiskFailPercentage
+checkAuditOnly=1                                              # Check only suspect disk only not the parity - Recomended setting otherwise very slow
+checkOnlyAfterIncrease=1                                      # Only check once each time Fail Percentage increases over checkDiskFailPercentage (recomended setting)
+checkDiskFailPercentage=90                                    # Fail Percentage to start checking
+checkMinTimeBetweenChecks=7                                   # Minimum time that must pass between checks on suspect disks in days
+checkAutoFix=0                                                # Auto call snapraid to fix recoverable files - NOT IMPLEMENTED!
  
 ## Snapraid options (Default locations)
-# 
-snapRaidConf=/etc/snapraid.conf                               #*Location of snapraid conf file
-#snapRaidConf=D:\snaptest\snapraid\snapraid.conf              #Location of snapraid conf file - Windows - Must point to your snapraid.conf file or script will croak
-snapRaidTmpLocation=                                          #Location of tmp files (if not defined uses scripts tmp directory)
- 
-## Binary locations(Default locations)
 #
-snapRaidBin=/usr/local/bin/snapraid                           #*Snapraid binary location
-#snapRaidBin=D:\snapraid\snapraid.exe                          #Snapraid binary location - Windows - Must point to your snapraid.exe or script will croak
+# Main snapraid options. 
+# snapRaidBin MUST contain the full path to the snapraid binary. (Defult location entered)
+# snapRaidConf MUST contain the full path to the snapraid conf file. (Default location entered)
+# Other options are very self explanatory
+# 
+snapRaidBin=/usr/local/bin/snapraid                           # *Snapraid binary location - Linux (comment out for windows)
+snapRaidConf=/etc/snapraid.conf                               # *Location of snapraid conf file - Linux (comment out for windows)
+#snapRaidBin=C:\snapraid\snapraid.exe                         # Snapraid binary location - Windows - Must point to your snapraid.exe or script will abort (uncomment for windows)
+#snapRaidConf=C:\snapraid\snapraid.conf                       # Location of snapraid conf file - Windows - Must point to your snapraid.conf file or script will abort (uncomment for windows)
+#snapRaidTmpLocation=                                          # Location of tmp files (if not defined uses scripts tmp directory) - Default setting is Empty
+preHashOnSync=1                                               # Pre-hash during sync to remove posiblity of silent error on busy machines. Please see snapraid manual http://www.snapraid.it/manual - Recomended Option! - v10.0+ only
+resetTimeStamps=1                                             # Use touch command to reset sub-second time stamps (Snapraid 10.0+)
+spinDown=0                                                    # Spindown array once script completed
+pool=0                                                        # Run pool command if valid config option found
 
 ## Other Options (Defaults will work fine for most. Disable logStdOut if using cron)
 #
-spinDown=0                                                    #Spindown array once script completed?
-pool=0                                                        #Run pool command if valid config option found?
-logFile=snapPERL.log                                          #Main logfile name
-logFileLocation=                                              #Location of log file (If not defined uses scripts log directory)
-logLevel=3                                                    #Level of logging (1:- Critical, 2:- Warning, 3:- Info, 4:- Everything, 5:- Debug)
-messageLevel=3                                                #For pushover/NMA/PushBullet (1:- Critical only 2:- +Warnings 3:- Normal)
-logStdout=1                                                   #If set to 1 sends log file to stdout (Not very useful when run via cron :P)
-useCustomCmds=0                                               #Load custom pre and post commands from custom-cmds file (optional feature)
+# If using snapraid below version 10.0 the script will carp about older unsupported versions.
+# Set noVersionWarnings=1 and it will mind it's own business (Fully things could happen. Tested on v10.0)
+#
+logFile=snapPERL.log                                          # Main logfile name
+#logFileLocation=                                              # Location of log file (If not defined uses scripts log directory) - Default: Empty
+logLevel=3                                                    # Level of logging (1:- Critical, 2:- Warning, 3:- Info, 4:- Everything, 5:- Debug)
+messageLevel=3                                                # For pushover/NMA/PushBullet (1:- Critical only 2:- +Warnings 3:- Normal)
+logStdout=1                                                   # If set to 1 sends log file to stdout (Not very useful when run via cron :P)
+useCustomCmds=0                                               # Load custom pre and post commands from custom-cmds file (optional feature)
+noVersionWarnings=0                                           # Script will give user prompts when runing <10.0 or <9.0 versions of Snapraid - Set to 1 to shut it up
+
+## Email Options (Optional)
+#
+# Send mails. This is the overlord setting and will disable all if set to 0
+# IMPORTANT: This script is not a SMTP deamon. It uses external services to send emails.
+# Just setting emailSend=1 will not generate magic emails. Writing a email SMTP into script not viable.
+#
+emailSend=0                                                   # Send email? - set to 0 disables all email!
+
+## Sendmail settings (Optional)
+#
+# Uses normal linux sendmail daemon - You need to have this running and configured to send mail.
+# For Windows you can get fake sendmail's that may work. Advanced option on Windows
+#
+emailUseSendmail=0                                            # Use localy configured sendmail?
+emailFromAddress=youremail@email.com                          # Email address to show as being sent from
+emailToAddress=youremail@email.com                            # Email address to send logs to
+
+## Use external SMTP (Optional)
+#
+# Use internal ot external SMTP server. Supports normal port:25 and SSL port:465
+# If authentication is needed -- MAKE SURE THE FILE CAN NOT BE READ BY PEOPLE YOU DONT WHAT SEEING THIS - Linux chmod 600 snapPERL.conf
+#
+emailUseSmtp=0                                                # Use none sendmail or external smtp if not using gmail 
+emailSmtpFromAddress=you@yourisp.com                          # From address for SMTP
+emailSmtpToAddress=you@yourisp.com                            # Address to send logs to using SMTP
+emailSmtpAddress=smtp.yourisp.com                             # SMTP address to use (Needed if emailUseSmtp set)
+emailSmtpPort=25                                              # Normaly Port 25 for normal and 465 for SSL
+emailSmtpSSL=0                                                # Use SSL - Normaly port 465
+emailSmtpUser=                                                # Smtp username if needed
+emailSmtpPass=                                                # Smtp password if needed
+
+## Gmail settings (Optional)
+#
+# Send mail using Gmails SMTP servers. Recommended setting for those with Gmail
+# Recommend using app passwords on 2 factor auth -> https://security.google.com/settings/security/apppasswords
+# If not using app passwords and 2 factor auth -- MAKE SURE THE FILE CAN NOT BE READ BY OTHERS - Linux chmod 600 snapPERL.conf
+#
+emailUseGmail=0                                               # Use Gmail to send mail
+emailGmailToAddress=youremail@gmail.com                       # Email address to send logs to from gmail
+emailGmailUser=youremail@gmail.com                            # Username will be your email address
+emailGmailPass=yourgmailpass                                  # Gmail password to use... See not at top
+
+## Pushover Options (Optional)
+#
+# Go to http://www.pushover.net and sign up for a User Key then add an application for a App Token. Sign up is free
+# but apps cost $4.99 for android and IOS - http://stevemiles.me.uk/snapperl/pushover-notifications-how-and-why/
+# Prioritys are -2: No sound. No icon, -1: No Sound with icon, 0: Sound and icon, 1: Sound and icon (Breaks though silent), 2: Same as 1 but you must acknowledged it
+#
+pushOverSend=0                                                # Send pushover alerts? - Not currently active
+pushOverKey=##############################                    # Pushover user key
+pushOverToken=##############################                  # Pushover app token
+pushOverUrl=https://api.pushover.net/1/messages.json          # Pushover url to send messages
+pushDefaultPriority=-1                                        # Default priority to send messages (-1 = silent)
+pushWarningPriority=0                                         # Priority to send messages with warnings (0 = alert)
+pushCriticalPriority=1                                        # Priority to send messages with criticals (1 = alert that will sound even in quite mode)
+pushSound=pushover                                            # Sound to use for alerts (Default pushover)
+pushDevice=                                                   # Device to send messages to (empty = all)
+
+## Notify my Android options (Optional)
+#
+# Not yet implemented
+#
+nmaSend=0                                                     # Send NMA alerts - Not currently active
+
+## Pushbullet options (Optional)
+#
+# Not yet implemented
+#
+pushBulletSend=0                                              # Send pushbullet alerts - Not currently active

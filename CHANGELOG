@@ -1,3 +1,21 @@
+##/##/#### v0.3.0
+            Sanity check for loaded conf file before calls to snapraid
+            Code added to catch fatal calls to load Modules not installed (Gmail and Email)
+            Using snapraid inbuilt logging. snapraid will still carp to STDERR for fatals and this will be picked up
+            Snapraid logs are located in log directory and if needed can be consulted for any issues
+            Added user info warnings for older version of Snapraid (New option in snapPERL.conf)
+            Added Pre-Hash option for sync. Please see manual at http://www.snapraid.it/manual - Snapraid v10.0+ only (New option in snapPERL.conf)
+            Compares snapraid.conf against last run and warns if they are different
+            Calls snapraid check on suspect disks. Settings in snapPERL.conf (New options in snyPERL.conf)
+            Email re-written. Now only uses Send::Mail::{Sendmail, SMTP, Gmail} (Options changed in snapPERL.conf)
+            Critical: Script aborts for none fatal warnings sent to stderr. Removed.
+            Catches added for snapraid DANGER! warning messages (Most people will never see one)
+            Added option to enforce minimum days between syncs (Now option in snapPERL.conf)
+            Added command line options that override conf settings if needed - snapPERL.pl -h
+            Added option to disable all scrub activity
+            Added snapPERL conf file checker - To enable easy upgrades
+            Conf reader modified to support conf file from upcomming Snapraid v11.0 (Multi parity files per parity)
+
 11/05/2016 v0.2.2
             Added windows support. No help files yet but tested and working. Must have ActivePerl / Strawberry Perl or DWIM Perl installed
             Tested using lastest ActivePerl and lates Snapraid for windows x64 v10.0

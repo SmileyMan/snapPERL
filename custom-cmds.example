@@ -1,10 +1,13 @@
 # Custom commands to run before script starts and after script completion 
+#
 # pre commands run before script starts. example:
 # pre=sudo systemctl stop nzbget
+#
 # post commands run after script completes. example:
 # post=sudo systemctl start nzbget
 
 # Enter commands in order you want them to run.
+# You can define as many has you want... Put >/dev/null if you don't want output seen on terminal
 # Comments and white space are ignored! - Remove # to run example commands.
 
 #pre=echo Precommand 1
