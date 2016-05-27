@@ -1,21 +1,22 @@
-# snapPERL v0.3.0
+# _*snapPERL v0.3.0*_
 
 #####Automation script for Snapraid created in PERL
 
- Snapraid wrapper script written in PERL. Enables automation using cron for your Array Syncs
+ Snapraid wrapper script written in *PERL*. Enables automation using cron for your Array Syncs
 
  Runs sync commands and verifys data using scrub command. Sends alerts when are issues found
- and aborts where needed. Tested with snapraid v10.0
+ and aborts where needed. Plus much more see: _snapPERL.conf.example_
 
-## Website: http://snapperl.stevemiles.me.uk
+## Website: [snapPERL](http://snapperl.stevemiles.me.uk/ "snapPERL")
 
 ---
 
-### Linux Compatible
-#### Tested on Ubuntu 16.04LTS
+## Linux Compatible
+##### Tested on Ubuntu 16.04LTS - Snapraid x64 v10.0
 
-### Windows Compatible
-#### Tested on Windows 10 - Snapraid x64 v10.0 and Latest ActivePerl 
+## Windows Compatible 
+#### _Requires PERL distribution to be installed_
+##### Tested on Windows 10 - Snapraid x64 v10.0 and Latest ActivePerl 
  
 --- 
  
@@ -33,28 +34,34 @@
 
 #Created by Steve Miles (SmileyMan). 
 
-http://snapperl.smileyman.me.uk
-https://github.com/SmileyMan/snapPERL
+[snapPERL Website](http://snapperl.stevemiles.me.uk/ "snapPERL Website")
 
-_Inspired by bash script http://zackreed.me/articles/83-updated-snapraid-sync-script 
-- Zack Reed (http://zackreed.me)_
+[snapPERL Github](https://github.com/SmileyMan/snapPERL/ "snapPERL Github")
 
-_Which in turn was a modified version of https://gist.github.com/bfg100k/87a1bbccf4f15d963ff7 
-- Sidney Chong first created in 2011_
+
+Inspired by this bash script: [SnapRAID Sync Script](http://zackreed.me/articles/83-updated-snapraid-sync-script) 
+-_Zack Reed (http://zackreed.me)_
+
+Which in turn was a modified version of this bash script: [SnapRAID Helper](https://gist.github.com/bfg100k/87a1bbccf4f15d963ff7) 
+-_Sidney Chong first created in 2011_
 
 ---
 
 #Work in Progress.
 
-This is just a wrapper for snapraid.exe
-and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should always be safe
-(only snapraid.exe manipulates the data)
+**This is just a wrapper for snapraid.exe**
 
----
+It only ever calls snapraid (diff/status/sync/scrub/check/smart/down)
+
+_(only snapraid.exe manipulates the data)_
 
 ####Script passes Perl::Critic - Severity: Stern
 
-###__This script does not write or manipulate and Array Data. It is a wrapper for snapraid http://www.snapraid.it/__
+---
+
+#### Important
+
+__This script does not write to or manipulate any Array Data__
 
 ---
 
@@ -76,6 +83,8 @@ and only ever calls snapraid (diff/status/sync/scrub/smart/down) so data should 
                 [ --spindown  --nospindown  { Toggle spindown disks         } ]
                 [ -h  --Help                { This Help                     } ]
                 [ -v  --version             { Display Version               } ]
+
+---
 
 #Disclaimer
 
