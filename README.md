@@ -66,7 +66,7 @@ __This script does not write to or manipulate any Array Data__
 ---
 
 #### Command Line Options
-##### Only for overrides set all permanent options in snapPERL.conf
+##### Only for overrides - Set all permanent options in snapPERL.conf
 
     snapPERL.pl [ -c  --conf CONFIG         { Full path to conf file        } ]
                 [ -x  --custom-cmds FILE    { Full path to custom-cmds file } ]
