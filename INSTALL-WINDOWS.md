@@ -76,3 +76,26 @@ Done!
 ~~~
 
 WOW and GUI's make things more easier? :P
+
+---
+
+#### Command Line Options - Good for testing after install
+##### Only for overrides set all permanent options in snapPERL.conf
+
+    snapPERL.pl [ -c  --conf CONFIG         { Full path to conf file        } ]
+                [ -x  --custom-cmds FILE    { Full path to custom-cmds file } ]
+                [ -m  --message-level 1-3   { Set message level             } ]
+                [ -l  --log-level 1-5       { Set log level                 } ]
+                [ --stdout    --nostdout    { Toggle log to stdout          } ]
+                [ --check     --nocheck     { Toggle check option enable    } ]
+                [ --scrub     --noscrub     { Toggle scrub option enable    } ]
+                [ --email     --noemail     { Toggle email send             } ]
+                [ --custom    --nocustom    { Toggle custom cmds            } ]
+                [ --pushover  --nopushover  { Toggle Pushover send          } ]
+                [ --smart     --nosmart     { Toggle smart logging          } ]
+                [ --pool      --nopool      { Toggle snapraid pool          } ]
+                [ --spindown  --nospindown  { Toggle spindown disks         } ]
+                [ -h  --Help                { This Help                     } ]
+                [ -v  --version             { Display Version               } ]
+
+---
