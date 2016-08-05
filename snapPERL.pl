@@ -33,7 +33,10 @@ use JSON::PP;            # Encode data to JSON for storage
 use Getopt::Long;        # Get command line options
 use Data::Dumper;        # Debug use - Dump hashes used
 
-our $VERSION = '0.3.0';
+# Work started on v0.4.0
+our $VERSION = '0.4.0';
+
+# Todo: More updates to log when running explaining whats going on for interactive use!
 
 ############################## Script only from here ########################################
 
@@ -117,7 +120,7 @@ if ( $opt{useCustomCmds} ) {
 # Parse snapraid conf file
 parse_conf();
 
-# Auto mount and unmount parity
+# Auto mount and unmount parity - Will leave to custom-cmds options - To be removed!
 #if ( %opt{autoMountParity} ) { mount_parity(); }
 
 # Check conf hash
@@ -130,7 +133,8 @@ snap_diff();
 # Sync needed?
 if ( $diffHash{sync} ) {
 
-  # Check set limits
+  # Check set limitsn here - Tagged to investigate
+  # Todo: Somthing funky going o
   if ( $diffHash{removed} <= $opt{deletedFiles} && $diffHash{updated} <= $opt{changedFiles} ) {
     logit(  text    => 'There are differences. Sync running', 
             message => 'Sync running',
@@ -293,6 +297,7 @@ sub snap_status {
   }
 
   # Critical error. Sync currently in progress.
+  # Todo: Handle this much better - Snapraid reports this when a sync has not completed not when an active sync in progress!
   if ( $output !~ m/No\s+?sync\s+?is\s+?in\s+?progress/i ) { 
     logit(  text    => 'Abort: Sync currently in progress',
             message => 'Abort: Sync currently in progress',
@@ -382,6 +387,7 @@ sub snap_diff {
   }
 
   # Add each diff value to %diffHash
+  # Todo: Extract from log file rather than scrape.
   foreach my $diffKey (qw( equal added removed updated moved copied restored )) {
     if ( $output =~ m/(?<diffValue>\d+?)\s+?$diffKey/i ) {
       $diffHash{$diffKey} = $+{diffValue};
