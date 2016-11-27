@@ -34,7 +34,7 @@ use Getopt::Long;        # Get command line options
 use Data::Dumper;        # Debug use - Dump hashes used
 
 # Work started on v0.4.0
-our $VERSION = '0.4.0';
+our $VERSION = '0.3.1';
 
 # Todo: More updates to log when running explaining whats going on for interactive use!
 
@@ -232,12 +232,6 @@ if ( $opt{smartLog} ) {
 # Spindown?
 if ( $opt{spinDown} ) { 
   snap_spindown(); 
-}
-
-if ( $opt{useCustomCmds} ) {
-
-  # Run post commands
-  custom_cmds('post');
 }
 
 logit(  text    => 'Script Completed',
@@ -1407,6 +1401,12 @@ sub script_comp {
       message     => $scriptMessage, 
     );
 
+  }
+  
+  if ( $opt{useCustomCmds} ) {
+
+    # Run post commands
+    custom_cmds('post');
   }
   
   return;

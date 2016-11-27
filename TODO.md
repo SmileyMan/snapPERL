@@ -49,4 +49,4 @@
 #Removed
            Allow smart data per disk (Plan v0.4) - No snapraid support
            Add option to delete duplicates and re-sync (Adding symbolic refs if wanted) (Plan v0.4) - Breaks underlying rule to not touch data
-           Big one - Check and auto update snapraid binary if enabled (Plan v1.0) - Potentialy dangerous and breaks underlying rule to not touch data
+           Big one - Check and auto update snapraid binary if enabled (Plan v1.0) - Potentialy dangerous and breaks underlying rule to not touch data.
