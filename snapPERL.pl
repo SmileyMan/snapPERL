@@ -1408,7 +1408,13 @@ sub script_comp {
     );
 
   }
-  
+
+  # Move here to fix Fatal Exit nit running Post Commands issue..
+  if ( $opt{useCustomCmds} ) {
+    # Run post commands
+    custom_cmds('post');
+  }
+
   return;
 }
 
