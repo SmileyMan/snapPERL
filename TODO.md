@@ -1,6 +1,7 @@
 
 #Todo
 
+           Checks and tests with latest Snapraid (Plan v0.4)
            Scrape Log Files and STDOUT for command output processing (Plan v0.4)
            Move Logit messages to external file en_GB.lang to allow translations (Plan v0.4)
 
@@ -45,6 +46,8 @@
            Add catches for snapraid DANGER! messages (Done v0.3)
            Option to enforce minimum days between syncs (Done v0.3)
            Limited command line options that overide conf settings (Done v0.3)
+           
+           Issue weith Post Commands not running after fatal Exit (Done 0.4)
                                 
 #Removed
            Allow smart data per disk (Plan v0.4) - No snapraid support

@@ -1402,6 +1402,7 @@ sub script_comp {
     );
 
   }
+<<<<<<< HEAD
   
   if ( $opt{useCustomCmds} ) {
 
@@ -1409,6 +1410,15 @@ sub script_comp {
     custom_cmds('post');
   }
   
+=======
+
+  # Move here to fix Fatal Exit nit running Post Commands issue..
+  if ( $opt{useCustomCmds} ) {
+    # Run post commands
+    custom_cmds('post');
+  }
+
+>>>>>>> bb7f27640566a38f5da042a49a0419c49678d284
   return;
 }
 
