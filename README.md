@@ -1,4 +1,6 @@
-# _*snapPERL v0.3.0*_
+# _*snapPERL v0.3.01*_
+
+#Work in Progress to make it work with Snapraid 11+.
 
 #####Automation script for Snapraid created in PERL
 
@@ -7,47 +9,15 @@
  Runs sync commands and verifys data using scrub command. Sends alerts when are issues found
  and aborts where needed. Plus much more see: _snapPERL.conf.example_
 
-## Website: [snapPERL](http://snapperl.stevemiles.me.uk/ "snapPERL")
-
 ---
-
-## Linux Compatible
-##### Tested on Ubuntu 16.04LTS - Snapraid x64 v10.0
 
 ## Windows Compatible 
 #### _Requires a PERL distribution to be installed_
-##### Tested on Windows 10 - Snapraid x64 v10.0 and Latest ActivePerl 
+##### Tested on Windows 10 - Snapraid x64 v11.5 and Latest ActivePerl 
+
+## Linux Compatible (Not verified to work as of yet)
  
---- 
- 
-#####Script is expected to be run as root so it calls snapraid as root
-
-#### _Please Read!_
-
-* CHANGELOG
-* INSTALL.md
-* INSTALL-WINDOWS.md
-* LICENSE
-* _And the extensive comments for the options in: snapPERL.conf.example_
-
 ---
-
-#Created by Steve Miles (SmileyMan). 
-
-[snapPERL Website](http://snapperl.stevemiles.me.uk/ "snapPERL Website")
-
-[snapPERL Github](https://github.com/SmileyMan/snapPERL/ "snapPERL Github")
-
-
-Inspired by this bash script: [SnapRAID Sync Script](http://zackreed.me/articles/83-updated-snapraid-sync-script) 
--_Zack Reed (http://zackreed.me)_
-
-Which in turn was a modified version of this bash script: [SnapRAID Helper](https://gist.github.com/bfg100k/87a1bbccf4f15d963ff7) 
--_Sidney Chong first created in 2011_
-
----
-
-#Work in Progress.
 
 **This is just a wrapper for snapraid.exe**
 
@@ -62,6 +32,36 @@ _(only Snapraid manipulates the data)_
 #### Important
 
 __This script does not write to or manipulate any Array Data__
+
+---
+
+ 
+#####Script is expected to be run as root so it calls snapraid as root
+
+#### _Please Read!_
+
+* CHANGELOG
+* INSTALL.md
+* INSTALL-WINDOWS.md
+* LICENSE
+* _And the extensive comments for the options in: snapPERL.conf.example_
+
+---
+
+#Modified to work with Snapraid 11+ by (Oskari Anttonen) Osjur
+
+#Originally created by Steve Miles (SmileyMan). 
+
+[snapPERL Website](http://snapperl.stevemiles.me.uk/ "snapPERL Website")
+
+[snapPERL Github](https://github.com/SmileyMan/snapPERL/ "snapPERL Github")
+
+
+Inspired by this bash script: [SnapRAID Sync Script](http://zackreed.me/articles/83-updated-snapraid-sync-script) 
+-_Zack Reed (http://zackreed.me)_
+
+Which in turn was a modified version of this bash script: [SnapRAID Helper](https://gist.github.com/bfg100k/87a1bbccf4f15d963ff7) 
+-_Sidney Chong first created in 2011_
 
 ---
 
