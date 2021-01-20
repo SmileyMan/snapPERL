@@ -48,13 +48,13 @@ __This script does not write to or manipulate any Array Data__
 
 ---
 
-#Modified to work with Snapraid 11+ by (Oskari Anttonen) Osjur
+#Modified to work with Snapraid 11+ by Oskari Anttonen (Osjur)
+
+[snapPERL Github](https://github.com/Osjur/snapPERL/ "snapPERL Fork")
 
 #Originally created by Steve Miles (SmileyMan). 
 
-[snapPERL Website](http://snapperl.stevemiles.me.uk/ "snapPERL Website")
-
-[snapPERL Github](https://github.com/SmileyMan/snapPERL/ "snapPERL Github")
+[Original snapPERL Github](https://github.com/SmileyMan/snapPERL/ "snapPERL Github")
 
 
 Inspired by this bash script: [SnapRAID Sync Script](http://zackreed.me/articles/83-updated-snapraid-sync-script) 
